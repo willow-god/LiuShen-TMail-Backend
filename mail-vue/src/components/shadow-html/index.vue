@@ -36,7 +36,7 @@ function updateContent() {
         all: initial;
         width: 100%;
         height: 100%;
-        font-family: Inter, -apple-system, BlinkMacSystemFont,
+        font-family: -apple-system, Inter, BlinkMacSystemFont,
                     'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         font-size: 14px;
         line-height: 1.5;
@@ -87,16 +87,11 @@ function autoScale() {
   if (!shadowContent) return
 
   const parentWidth = parent.offsetWidth
-  const parentHeight = parent.offsetHeight
-
   const childWidth = shadowContent.scrollWidth
-  const childHeight = shadowContent.scrollHeight
 
-  if (childWidth === 0 || childHeight === 0) return
+  if (childWidth === 0) return
 
-  const scaleX = parentWidth / childWidth
-  const scaleY = parentHeight / childHeight
-  const scale = Math.min(scaleX, scaleY)
+  const scale = parentWidth / childWidth
 
   const hostElement = shadowRoot.host
   hostElement.style.zoom = scale
@@ -119,7 +114,7 @@ watch(() => props.html, () => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: -apple-system, Inter, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 .content-html {

@@ -9,7 +9,7 @@ app.use('*', cors());
 app.onError((err, c) => {
 	if (err.name === 'BizError') {
 		console.log(err.message);
-	}else {
+	} else {
 		console.error(err);
 	}
 

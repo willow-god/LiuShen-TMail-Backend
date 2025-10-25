@@ -1,9 +1,9 @@
-import { sqliteTable, text, integer} from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 export const setting = sqliteTable('setting', {
 	register: integer('register').default(0).notNull(),
 	receive: integer('receive').default(0).notNull(),
 	title: text('title').default('').notNull(),
-	manyEmail: integer('many_email').default(1).notNull(),
+	manyEmail: integer('many_email').default(0).notNull(),
 	addEmail: integer('add_email').default(0).notNull(),
 	autoRefreshTime: integer('auto_refresh_time').default(0).notNull(),
 	addEmailVerify: integer('add_email_verify').default(1).notNull(),
@@ -39,6 +39,27 @@ export const setting = sqliteTable('setting', {
 	region: text('region').default('').notNull(),
 	endpoint: text('endpoint').default('').notNull(),
 	s3AccessKey: text('s3_access_key').default('').notNull(),
-	s3SecretKey: text('s3_secret_key').default('').notNull()
+	s3SecretKey: text('s3_secret_key').default('').notNull(),
+	kvStorage: integer('kv_storage').default(1).notNull(),
+	forcePathStyle: integer('force_path_style').default(1).notNull(),
+	customDomain: text('custom_domain').default('').notNull(),
+	tgMsgFrom: text('tg_msg_from').default('only-name').notNull(),
+	tgMsgTo: text('tg_msg_to').default('show').notNull(),
+	oidcEnabled: integer('oidc_enabled').default(1).notNull(),
+	oidcProvider: text('oidc_provider').default('').notNull(),
+	oidcClientId: text('oidc_client_id').default('').notNull(),
+	oidcClientSecret: text('oidc_client_secret').default('').notNull(),
+	oidcDiscoveryUrl: text('oidc_discovery_url').default('').notNull(),
+	oidcScopes: text('oidc_scopes').default('').notNull(),
+	oauthEnabled: integer('oauth_enabled').default(1).notNull(),
+	oauthProvider: text('oauth_provider').default('').notNull(),
+	oauthCustomProviderName: text('oauth_custom_provider_name').default('').notNull(),
+	oauthTenantId: text('oauth_tenant_id').default('').notNull(),
+	oauthClientId: text('oauth_client_id').default('').notNull(),
+	oauthClientSecret: text('oauth_client_secret').default('').notNull(),
+	oauthAuthUrl: text('oauth_auth_url').default('').notNull(),
+	oauthTokenUrl: text('oauth_token_url').default('').notNull(),
+	oauthUserInfoUrl: text('oauth_user_info_url').default('').notNull(),
+	oauthScopes: text('oauth_scopes').default('').notNull()
 });
 export default setting

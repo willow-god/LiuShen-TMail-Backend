@@ -96,7 +96,7 @@
                       fit="cover"
                   >
                     <template #error>
-                      <div class="error-image" @click="openSetBackground">
+                      <div class="error-image">
                         <Icon icon="ph:image" width="24" height="24"/>
                       </div>
                     </template>
@@ -197,11 +197,28 @@
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>{{ $t('s3Configuration') }}</span></div>
+                <div>
+                  <span>{{ $t('s3Configuration') }}</span>
+                  <el-tooltip effect="dark" :content="$t('s3Desc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
                 <div class="r2domain">
                   <el-button class="opt-button" size="small" type="primary" @click="addS3Show = true">
                     <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
                   </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('kvStorage') }}</span>
+                  <el-tooltip effect="dark" :content="$t('kvStorageDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="r2domain">
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.kvStorage"/>
                 </div>
               </div>
             </div>
@@ -320,6 +337,27 @@
                 <div class="forward">
                   <el-button class="opt-button" size="small" type="primary" @click="openNoticePopup">
                     <Icon icon="mynaui:click-solid" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OAuth Login Configuration Card -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('oauthConfig') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('oauthEnabled') }}</span>
+                  <el-tooltip effect="dark" content="用户可以在登录页面使用 OAuth 账号登录，需要先注册账号后才能绑定">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <span>{{ setting.oauthEnabled === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="oauthSettingShow = true">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
                   </el-button>
                 </div>
               </div>
@@ -468,6 +506,29 @@
           <el-input :placeholder="$t('tgBotToken')" v-model="tgBotToken"></el-input>
           <el-input-tag tag-type="warning" :placeholder="$t('toBotTokenDesc')" v-model="tgChatId"
                         @add-tag="addChatTag"></el-input-tag>
+          <el-input tag-type="warning" :placeholder="$t('customDomainDesc')" v-model="customDomain" ></el-input>
+          <div class="tg-msg-label">
+            <span>{{t('from')}}</span>
+            <el-select  v-model="tgMsgFrom" >
+              <el-option
+                  v-for="item in tgMsgFromOption"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+              />
+            </el-select>
+          </div>
+          <div class="tg-msg-label">
+            <span>{{t('recipient')}}</span>
+            <el-select  v-model="tgMsgTo" >
+              <el-option
+                  v-for="item in tgMsgToOption"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+              />
+            </el-select>
+          </div>
         </div>
         <template #footer>
           <div class="dialog-footer">
@@ -636,10 +697,83 @@
           <el-input class="dialog-input" type="text" placeholder="Region" v-model="s3.region"/>
           <el-input class="dialog-input" type="text" :placeholder="setting.s3AccessKey || 'Access Key'"
                     v-model="s3.s3AccessKey"/>
-          <el-input type="text" :placeholder="setting.s3SecretKey || 'Secret Key'" v-model="s3.s3SecretKey"/>
+          <el-input style="margin-bottom: 10px" type="text" :placeholder="setting.s3SecretKey || 'Secret Key'" v-model="s3.s3SecretKey"/>
+          <div class="force-path-style">
+            <div class="force-path-style-left">
+              <span>ForcePathStyle</span>
+              <el-tooltip effect="dark" :content="$t('forcePathStyleDesc')">
+                <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+              </el-tooltip>
+            </div>
+            <el-switch :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                       v-model="s3.forcePathStyle"/>
+          </div>
           <div class="s3-button">
             <el-button :loading="clearS3Loading" @click="clearS3">{{ t('clear') }}</el-button>
             <el-button type="primary" :loading="settingLoading && !clearS3Loading" @click="saveS3">{{ t('save') }}</el-button>
+          </div>
+        </form>
+      </el-dialog>
+
+      <!-- OAuth Configuration Dialog -->
+      <el-dialog v-model="oauthSettingShow" :title="t('oauthConfig')" width="400">
+        <el-alert
+          title="说明"
+          type="info"
+          description="用户可以在登录页面使用 OAuth 账号登录。用户需要先用邮箱注册账号，然后在登录后的个人设置中绑定 OAuth 账号。"
+          :closable="false"
+          style="margin-bottom: 15px"
+        />
+        <form>
+          <div class="dialog-form-item">
+            <label>{{ $t('oauthEnabled') }}</label>
+            <el-switch :active-value="0" :inactive-value="1" v-model="oauthForm.enabled"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthCallbackUrl') }}</label>
+            <div class="callback-url-display">{{ oauthCallbackUrl }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('selectProvider') }}</label>
+            <el-select class="dialog-input" v-model="oauthForm.provider" @change="handleOauthProviderChange" clearable>
+              <el-option v-for="item in oauthProviderOptions" :key="item.value" :label="item.label" :value="item.value"/>
+            </el-select>
+          </div>
+          <div class="form-group" v-if="oauthForm.provider === 'custom'">
+            <label class="form-label">{{ $t('customProviderName') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.customProviderName" :placeholder="$t('customProviderNamePlaceholder')"/>
+          </div>
+          <div class="form-group" v-if="oauthForm.provider === 'microsoft'">
+            <label class="form-label">{{ $t('oauthTenantId') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.tenantId" :placeholder="$t('oauthTenantIdPlaceholder')"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthClientId') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.clientId"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthClientSecret') }}</label>
+            <el-input class="dialog-input" type="password" v-model="oauthForm.clientSecret"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthAuthUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.authUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthTokenUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.tokenUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthUserInfoUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.userInfoUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthScopes') }}</label>
+            <el-input style="margin-bottom: 10px" type="text" v-model="oauthForm.scopes"/>
+          </div>
+          <div class="dialog-footer">
+            <el-button @click="oauthSettingShow = false">{{ $t('cancel') }}</el-button>
+            <el-button type="primary" :loading="settingLoading" @click="saveOauthConfig">{{ $t('save') }}</el-button>
           </div>
         </form>
       </el-dialog>
@@ -649,7 +783,7 @@
 
 <script setup>
 import {computed, defineOptions, reactive, ref} from "vue";
-import {physicsDeleteAll, setBackground, settingQuery, settingSet} from "@/request/setting.js";
+import {deleteBackground, setBackground, settingQuery, settingSet} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
@@ -669,7 +803,7 @@ defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v2.1.0'
+const currentVersion = 'v2.3.0'
 const hasUpdate = ref(false)
 let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
@@ -704,6 +838,7 @@ let backup = '{}'
 const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
 const regVerifyCountShow = ref(false)
+const oauthSettingShow = ref(false)
 const resendTokenForm = reactive({
   domain: '',
   token: '',
@@ -718,7 +853,8 @@ const s3 = reactive({
   endpoint: '',
   region: '',
   s3AccessKey: '',
-  s3SecretKey: ''
+  s3SecretKey: '',
+  forcePathStyle: 1
 })
 
 const noticeForm = reactive({
@@ -749,6 +885,7 @@ const options = computed(() => [
 ])
 
 const tgChatId = ref([])
+const customDomain = ref('')
 const tgBotStatus = ref(0)
 const tgBotToken = ref('')
 const forwardEmail = ref([])
@@ -757,6 +894,72 @@ const emailColumnWidth = ref(0)
 const tokenColumnWidth = ref(0)
 const ruleType = ref(0)
 const ruleEmail = ref([])
+const tgMsgFrom = ref('')
+const tgMsgTo = ref('')
+
+const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}, {label: t('onlyName'), value:'only-name'}]
+const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
+const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
+
+const oauthCallbackUrl = computed(() => {
+  const origin = window.location.origin
+  return `${origin}/api/auth/oauth/callback`
+})
+
+const oauthProviders = {
+  github: {
+    name: 'GitHub',
+    authUrl: 'https://github.com/login/oauth/authorize',
+    tokenUrl: 'https://github.com/login/oauth/access_token',
+    userInfoUrl: 'https://api.github.com/user',
+    scopes: 'user:email'
+  },
+  google: {
+    name: 'Google',
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+    scopes: 'openid profile email'
+  },
+  microsoft: {
+    name: 'Microsoft',
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+    scopes: 'openid profile email User.Read offline_access'
+  }
+}
+
+const oauthProviderOptions = computed(() => [
+  { label: t('selectProvider'), value: '' },
+  { label: 'GitHub', value: 'github' },
+  { label: 'Google', value: 'google' },
+  { label: 'Microsoft', value: 'microsoft' },
+  { label: t('customProvider'), value: 'custom' }
+])
+
+function handleOauthProviderChange(value) {
+  if (value && value !== 'custom' && oauthProviders[value]) {
+    const provider = oauthProviders[value]
+    oauthForm.authUrl = provider.authUrl
+    oauthForm.tokenUrl = provider.tokenUrl
+    oauthForm.userInfoUrl = provider.userInfoUrl
+    oauthForm.scopes = provider.scopes
+  }
+}
+
+const oauthForm = reactive({
+  enabled: 1,
+  provider: '',
+  customProviderName: '',
+  tenantId: '',
+  clientId: '',
+  clientSecret: '',
+  authUrl: '',
+  tokenUrl: '',
+  userInfoUrl: '',
+  scopes: ''
+})
 
 getSettings()
 getUpdate()
@@ -773,6 +976,17 @@ function getSettings() {
     r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
     regVerifyCount.value = setting.value.regVerifyCount
+    // Load OAuth configuration
+    oauthForm.enabled = settingData.oauthEnabled ?? 1
+    oauthForm.provider = settingData.oauthProvider ?? ''
+    oauthForm.customProviderName = settingData.oauthCustomProviderName ?? ''
+    oauthForm.tenantId = settingData.oauthTenantId ?? ''
+    oauthForm.clientId = settingData.oauthClientId ?? ''
+    oauthForm.clientSecret = settingData.oauthClientSecret ?? ''
+    oauthForm.authUrl = settingData.oauthAuthUrl ?? ''
+    oauthForm.tokenUrl = settingData.oauthTokenUrl ?? ''
+    oauthForm.userInfoUrl = settingData.oauthUserInfoUrl ?? ''
+    oauthForm.scopes = settingData.oauthScopes ?? ''
     resetNoticeForm()
     resetAddS3Form()
   })
@@ -799,6 +1013,7 @@ function resetAddS3Form() {
   s3.region = setting.value.region
   s3.s3AccessKey = ''
   s3.s3SecretKey = ''
+  s3.forcePathStyle = setting.value.forcePathStyle
 }
 
 const resendList = computed(() => {
@@ -869,6 +1084,9 @@ function closedSetBackground() {
 function openTgSetting() {
   tgBotStatus.value = setting.value.tgBotStatus
   tgBotToken.value = setting.value.tgBotToken
+  customDomain.value = setting.value.customDomain
+  tgMsgFrom.value = setting.value.tgMsgFrom
+  tgMsgTo.value = setting.value.tgMsgTo
   tgChatId.value = []
   if (setting.value.tgChatId) {
     const list = setting.value.tgChatId.split(',')
@@ -977,7 +1195,8 @@ function clearS3() {
     endpoint: '',
     region: '',
     s3AccessKey: '',
-    s3SecretKey: ''
+    s3SecretKey: '',
+    forcePathStyle: 1
   }
   clearS3Loading.value = true
   editSetting(form)
@@ -988,7 +1207,8 @@ function saveS3() {
   const form = {
     bucket: s3.bucket,
     endpoint: s3.endpoint,
-    region: s3.region
+    region: s3.region,
+    forcePathStyle: s3.forcePathStyle
   }
 
   if (s3.s3AccessKey) form.s3AccessKey = s3.s3AccessKey
@@ -1000,8 +1220,11 @@ function saveS3() {
 function tgBotSave() {
   const form = {
     tgBotToken: tgBotToken.value,
+    customDomain: customDomain.value,
     tgBotStatus: tgBotStatus.value,
-    tgChatId: tgChatId.value + ''
+    tgChatId: tgChatId.value + '',
+    tgMsgFrom: tgMsgFrom.value,
+    tgMsgTo: tgMsgTo.value
   }
   editSetting(form)
 }
@@ -1034,35 +1257,21 @@ const opacityChange = debounce(doOpacityChange, 1000, {
   trailing: true
 })
 
-function physicsDeleteAllData() {
-  ElMessageBox.prompt(t('clearAllDelConfirm'), {
-    confirmButtonText: t('confirm'),
-    cancelButtonText: t('cancel'),
-    dangerouslyUseHTMLString: true,
-    title: t('warning'),
-    type: 'warning',
-    inputPattern: new RegExp(`^${t('delInputPattern')}$`),
-    inputErrorMessage: t('inputErrorMessage'),
-  }).then(() => {
-    physicsDeleteAll().then(() => {
-      ElMessage({
-        message: t('delSuccessMsg'),
-        type: "success",
-        plain: true
-      })
-    })
-  })
-}
-
 function delBackground() {
   ElMessageBox.confirm(t('delBackgroundConfirm'), {
     confirmButtonText: t('confirm'),
     cancelButtonText: t('cancel'),
     type: 'warning'
   }).then(() => {
-    backgroundUrl.value = ''
-    setting.value.background = null
-    editSetting({background: null})
+    deleteBackground().then(() => {
+      backgroundUrl.value = ''
+      setting.value.background = null
+      ElMessage({
+        message: t('delSuccessMsg'),
+        type: "success",
+        plain: true
+      })
+    })
   })
 }
 
@@ -1181,6 +1390,22 @@ function jump(href) {
   doc.click()
 }
 
+function saveOauthConfig() {
+  const settingForm = {
+    oauthEnabled: oauthForm.enabled,
+    oauthProvider: oauthForm.provider,
+    oauthCustomProviderName: oauthForm.customProviderName,
+    oauthTenantId: oauthForm.tenantId,
+    oauthClientId: oauthForm.clientId,
+    oauthClientSecret: oauthForm.clientSecret,
+    oauthAuthUrl: oauthForm.authUrl,
+    oauthTokenUrl: oauthForm.tokenUrl,
+    oauthUserInfoUrl: oauthForm.userInfoUrl,
+    oauthScopes: oauthForm.scopes
+  }
+  editSetting(settingForm)
+}
+
 function editSetting(settingForm, refreshStatus = true) {
   if (settingLoading.value) return
   settingLoading.value = true
@@ -1209,6 +1434,7 @@ function editSetting(settingForm, refreshStatus = true) {
     regVerifyCountShow.value = false
     noticePopupShow.value = false
     addS3Show.value = false
+    oauthSettingShow.value = false
   }).catch((e) => {
     loginOpacity.value = setting.value.loginOpacity
     setting.value = {...setting.value, ...JSON.parse(backup)}
@@ -1368,7 +1594,7 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 .warning {
-  margin-left: 4px;
+  margin-left: 2px;
   color: grey;
   cursor: pointer;
 }
@@ -1458,6 +1684,43 @@ function editSetting(settingForm, refreshStatus = true) {
   height: fit-content !important;
 }
 
+.dialog-input {
+  margin-bottom: 10px;
+}
+
+.dialog-form-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+
+  label {
+    font-weight: 500;
+  }
+}
+
+.form-group {
+  margin-bottom: 15px;
+
+  .form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+}
+
+.callback-url-display {
+  padding: 8px 12px;
+  background-color: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  word-break: break-all;
+  font-family: monospace;
+}
+
 
 :deep(.forward-dialog.el-dialog) {
   width: 500px !important;
@@ -1475,6 +1738,7 @@ function editSetting(settingForm, refreshStatus = true) {
 
     .forward-set-title {
       top: 1px;
+      padding-right: 5px;
       position: relative;
       font-size: 16px;
       font-weight: bold;;
@@ -1527,10 +1791,23 @@ function editSetting(settingForm, refreshStatus = true) {
 .forward-set-body {
   display: flex;
   flex-direction: column;
-  gap: 15px;
 
   .el-switch {
     align-self: end;
+  }
+
+  > *:nth-child(-n+2) {
+    margin-bottom: 15px;
+  }
+
+  .tg-msg-label {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .el-select {
+      width: v-bind(tgMsgLabelWidth);
+    }
   }
 }
 
@@ -1595,6 +1872,20 @@ function editSetting(settingForm, refreshStatus = true) {
   margin-bottom: 15px;
 }
 
+.force-path-style {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  .force-path-style-left {
+    padding-left: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
 .concerning-item {
   display: flex;
   align-items: center;
@@ -1648,7 +1939,7 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 form .el-button {
-  margin-top: 15px;
+  margin-top: 10px;
   width: 100%;
 }
 

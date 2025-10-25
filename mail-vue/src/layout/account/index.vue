@@ -343,9 +343,8 @@ function getAccountList() {
 
     let end = Date.now();
     let duration = end - start;
-    if (duration < 500) {
-      await sleep(500 - duration)
-
+    if (duration < 300) {
+      await sleep(300 - duration)
     }
 
     if (list.length < queryParams.size) {

@@ -107,6 +107,14 @@ export const settingConst = {
 	noRecipient: {
 		OPEN: 0,
 		CLOSE: 1,
+	},
+	kvStorage: {
+		OPEN: 0,
+		CLOSE: 1
+	},
+	forcePathStyle: {
+		OPEN: 0,
+		CLOSE: 1
 	}
 }
 

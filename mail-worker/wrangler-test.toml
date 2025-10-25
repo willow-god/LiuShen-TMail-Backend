@@ -18,7 +18,7 @@ id = "9be10cd058e04c55b526f8c0c116f50c"					#kv数据库id
 #(可选)
 #[[r2_buckets]]
 #binding = "r2"			#r2对象存储绑定名默认不可修改
-#bucket_name = "email"		#r2对象存储桶的名字
+#bucket_name = "test-email"		#r2对象存储桶的名字
 
 [assets]
 binding = "assets"		#静态资源绑定名默认不可修改
@@ -32,9 +32,9 @@ crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
 
 [vars]
 orm_log = false
-domain = ["mornglow.top"]				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
-admin = "admin@mornglow.top"				#管理员的邮箱	示例: admin@example.com
-jwt_secret = "asdfsadfasgasdgagda"			#jwt令牌的密钥,随便填一串字符串
+domain = ["example.com"]				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
+admin = "admin@example.com"				#管理员的邮箱	示例: admin@example.com
+jwt_secret = "b7f29a1d-18e2-4d3b-941f-f6b2c97c02fd"			#jwt令牌的密钥,随便填一串字符串
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"

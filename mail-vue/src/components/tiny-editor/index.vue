@@ -32,7 +32,7 @@ const props = defineProps({
 
 
 const {locale} = useI18n()
-const emit = defineEmits(['change']);
+const emit = defineEmits(['change','focus']);
 const editor = shallowRef(null);
 const isInitialized = ref(false);
 const editorRef = ref(null);
@@ -124,6 +124,9 @@ function initEditor() {
         const text = ed.getContent({format: 'text'});
         emit('change', content, text);
       });
+      ed.on('focus', () => {
+        emit('focus', focus);
+      })
     },
     autofocus: true,
     branding: false,

@@ -7,15 +7,11 @@ import constant from '../const/constant';
 import fileUtils from '../utils/file-utils';
 import { emailConst, isDel, roleConst, settingConst } from '../const/entity-const';
 import emailUtils from '../utils/email-utils';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
 import roleService from '../service/role-service';
 import verifyUtils from '../utils/verify-utils';
 import r2Service from '../service/r2-service';
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import userService from '../service/user-service';
+import telegramService from '../service/telegram-service';
 
 export async function email(message, env, ctx) {
 
@@ -23,7 +19,6 @@ export async function email(message, env, ctx) {
 
 		const {
 			receive,
-			tgBotToken,
 			tgChatId,
 			tgBotStatus,
 			forwardStatus,
@@ -58,7 +53,13 @@ export async function email(message, env, ctx) {
 			return;
 		}
 
-		if (account && account.email !== env.admin) {
+		let userRow = {}
+
+		if (account) {
+			 userRow = await userService.selectById({ env: env }, account.userId);
+		}
+
+		if (account && userRow.email !== env.admin) {
 
 			let { banEmail, banEmailType, availDomain } = await roleService.selectByUserId({ env: env }, account.userId);
 
@@ -172,42 +173,12 @@ export async function email(message, env, ctx) {
 
 		}
 
-
+		//转发到TG
 		if (tgBotStatus === settingConst.tgBotStatus.OPEN && tgChatId) {
-
-			const tgMessage = `<b>${params.subject}</b>
-
-<b>发件人：</b>${params.name}		&lt;${params.sendEmail}&gt;
-<b>收件人：\u200B</b>${message.to}
-<b>时间：</b>${dayjs.utc(emailRow.createTime).tz('Asia/Shanghai').format('YYYY-MM-DD HH:mm')}
-
-${params.text || emailUtils.htmlToText(params.content) || ''}
-`;
-
-			const tgChatIds = tgChatId.split(',');
-
-			await Promise.all(tgChatIds.map(async chatId => {
-				try {
-					const res = await fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							chat_id: chatId,
-							parse_mode: 'HTML',
-							text: tgMessage
-						})
-					});
-					if (!res.ok) {
-						console.error(`转发 Telegram 失败: chatId=${chatId}, 状态码=${res.status}`);
-					}
-				} catch (e) {
-					console.error(`转发 Telegram 失败: chatId=${chatId}`, e);
-				}
-			}));
+			await telegramService.sendEmailToBot({ env }, emailRow)
 		}
 
+		//转发到其他邮箱
 		if (forwardStatus === settingConst.forwardStatus.OPEN && forwardEmail) {
 
 			const emails = forwardEmail.split(',');

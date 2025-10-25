@@ -21,3 +21,9 @@ app.put('/setting/setBackground', async (c) => {
 	const key = await settingService.setBackground(c, await c.req.json());
 	return c.json(result.ok(key));
 });
+
+app.delete('/setting/deleteBackground', async (c) => {
+	await settingService.deleteBackground(c);
+	return c.json(result.ok());
+});
+

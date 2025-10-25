@@ -1,6 +1,6 @@
 <template>
   <div class="send" v-show="show">
-    <div class="write-box" @click.stop>
+    <div class="write-box">
       <div class="title">
         <div class="title-left">
           <span class="title-text">
@@ -15,12 +15,31 @@
         </div>
       </div>
       <div class="container">
-        <el-input-tag @add-tag="addTagChange" tag-type="primary" size="default" v-model="form.receiveEmail"
-                      :placeholder="$t('ruleEmailsInputDesc')">
+        <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail"
+                      :placeholder="ruleEmailsInputDesc">
           <template #prefix>
-            <div class="item-title">{{ $t('recipient') }}</div>
+            <div class="item-title" >{{ $t('recipient') }}</div>
+            <el-select
+                ref="mySelect"
+                class="select"
+                :show-arrow="false"
+                :no-match-text="' '"
+                :no-data-text="' '"
+                @visible-change="selectStatusChange"
+                @change="selectChange"
+            >
+              <el-option
+                  v-for="item in selectRecipientList"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+              />
+            </el-select>
           </template>
           <template #suffix>
+            <div style="display: flex;">
+              <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
+            </div>
             <span class="distribute" :class="form.manyType ? 'checked' : ''"
                   @click.stop="checkDistribute">{{ $t('sendSeparately') }}</span>
           </template>
@@ -30,7 +49,7 @@
             <div class="item-title">{{ $t('subject') }}</div>
           </template>
         </el-input>
-        <tinyEditor :def-value="defValue" ref="editor" @change="change"/>
+        <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
         <div class="button-item">
           <div class="att-add" @click="chooseFile">
             <Icon icon="iconamoon:attachment-fill" width="24" height="24"/>
@@ -54,11 +73,32 @@
         </div>
       </div>
     </div>
+    <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')">
+      <el-table ref="contactsTabRef" row-key="email" :data="contacts" style="height: 445px">
+        <el-table-column type="selection" width="32" />
+        <el-table-column property="email" :label="t('emailAccount')" >
+          <template #default="props">
+            <div class="email-row">{{ props.row.email }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column width="55" label="" >
+          <template #default>
+            <div style="display: flex;">
+              <Icon icon="mage:user" style="color: var(--el-text-color-primary)" width="22" height="22" color="#606266" />
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="contacts-bottom">
+        <el-button type="default" @click="deleteContact">{{t('clear')}}</el-button>
+        <el-button type="primary" @click="chooseContact">{{t('selectContacts')}}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw} from "vue";
+import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend} from "@/request/email.js";
@@ -72,6 +112,7 @@ import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
 import {userDraftStore} from "@/store/draft.js";
+import {useWriterStore} from "@/store/writer.js";
 import db from "@/db/db.js";
 import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
@@ -83,6 +124,7 @@ defineExpose({
 })
 
 const {t} = useI18n()
+const writerStore = useWriterStore();
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
 const emailStore = useEmailStore();
@@ -94,6 +136,11 @@ const percent = ref(0)
 let percentMessage = null
 let sending = false
 const defValue = ref('')
+const contactsTabRef = ref({})
+const showContacts = ref(false)
+const mySelect = ref()
+let selectStatus = false
+const ruleEmailsInputDesc = ref(t('ruleEmailsInputDesc'))
 const backReply = reactive({
   receiveEmail: [],
   subject: '',
@@ -115,6 +162,80 @@ const form = reactive({
   draftId: null,
 })
 
+const selectRecipientList = ref([])
+
+const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
+
+function openContacts() {
+  showContacts.value = true
+  nextTick(() => {
+    form.receiveEmail.forEach(item => {
+      if (writerStore.sendRecipientRecord.includes(item)) {
+        contactsTabRef.value.toggleRowSelection({email: item});
+      }
+    })
+  })
+}
+
+function deleteContact() {
+  ElMessageBox.confirm(t('confirmDeletionOfContacts'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    const contactList = contactsTabRef.value.getSelectionRows().map(item => item.email);
+    form.receiveEmail = form.receiveEmail.filter(item => !contactList.includes(item));
+    writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(item => !contactList.includes(item));
+  })
+}
+
+function chooseContact() {
+
+  const contactList = contactsTabRef.value.getSelectionRows().map(item => item.email);
+  contactList.forEach(item => {
+    if (!form.receiveEmail.includes(item)) {
+      form.receiveEmail.push(item);
+    }
+  })
+
+  form.receiveEmail = form.receiveEmail.filter(item => {
+    return contactList.includes(item) || !writerStore.sendRecipientRecord.includes(item);
+  });
+
+  showContacts.value = false
+}
+
+function clearSelectContact() {
+  contactsTabRef.value.clearSelection();
+}
+
+function selectChange(value) {
+  form.receiveEmail.push(value)
+}
+
+function selectStatusChange(status) {
+  selectStatus = status
+  ruleEmailsInputDesc.value = status ? '' : ruleEmailsInputDesc.value = t('ruleEmailsInputDesc')
+}
+
+const openSelect = () => {
+  mySelect.value.toggleMenu()
+}
+
+function inputChange(value) {
+
+  selectRecipientList.value = writerStore.sendRecipientRecord.filter(item => value && !form.receiveEmail.includes(item) && item.startsWith(value)).slice(0, 10);
+
+  if (!selectStatus && selectRecipientList.value.length > 0) {
+    openSelect()
+  }
+
+  if (selectStatus && selectRecipientList.value.length === 0) {
+    openSelect()
+  }
+
+}
+
 function addTagChange(val) {
 
   const emails = Array.from(new Set(
@@ -123,12 +244,14 @@ function addTagChange(val) {
 
   form.receiveEmail.splice(form.receiveEmail.length - 1, 1)
 
+  let has = false
   emails.forEach(email => {
     if (isEmail(email) && !form.receiveEmail.includes(email)) {
       form.receiveEmail.push(email)
+      has = true
     }
   })
-
+  if (selectStatus && has) openSelect()
 }
 
 function checkDistribute() {
@@ -251,6 +374,8 @@ async function sendEmail() {
 
     userStore.refreshUserInfo();
 
+    addRecipientRecord();
+
     if (form.draftId) {
       form.subject = ''
       form.content = ''
@@ -258,8 +383,8 @@ async function sendEmail() {
       draftStore.setDraft = {...toRaw(form)}
     }
 
-    resetForm()
     show.value = false
+    resetForm();
   }).catch((e) => {
     ElNotification({
       title: t('sendFailMsg'),
@@ -268,6 +393,7 @@ async function sendEmail() {
       position: 'bottom-right'
     })
     show.value = true
+    addRecipientRecord();
   }).finally(() => {
     percentMessage.close()
     percent.value = 0
@@ -275,6 +401,14 @@ async function sendEmail() {
   })
 }
 
+function addRecipientRecord() {
+  writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(
+      email => !form.receiveEmail.includes(email)
+  );
+
+  writerStore.sendRecipientRecord.unshift(...form.receiveEmail);
+  writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.slice(0, 500);
+}
 
 function resetForm() {
   form.receiveEmail = []
@@ -295,6 +429,10 @@ function resetForm() {
 function change(content, text) {
   form.content = content;
   form.text = text
+}
+
+function focusChange() {
+  if (selectStatus) openSelect()
 }
 
 function openReply(email) {
@@ -377,6 +515,8 @@ onUnmounted(() => {
 });
 
 function close() {
+
+  if (selectStatus) openSelect();
 
   if (form.draftId) {
     draftStore.setDraft = {...toRaw(form)}
@@ -521,13 +661,6 @@ function close() {
         border-radius: 4px;
       }
 
-
-      .distribute:hover {
-        background: var(--el-color-primary-light-9);
-        color: var(--el-color-primary) !important;
-        border-radius: 4px;
-      }
-
       .item-title {
       }
 
@@ -576,6 +709,40 @@ function close() {
     }
   }
 
+}
+
+.email-row {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:deep(.el-dialog) {
+  width: 420px !important;
+  @media (max-width: 460px) {
+    width: calc(100% - 40px) !important;
+    margin-right: 20px !important;
+    margin-left: 20px !important;
+  }
+}
+
+.contacts-bottom {
+  display: flex;
+  justify-content: end;
+  margin-top: 10px;
+}
+
+.add-contact {
+  color: var(--regular-text-color)
+}
+
+.select {
+  position: absolute;
+  width: 300px;
+  left: 60px;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 :deep(.el-input-tag__suffix) {

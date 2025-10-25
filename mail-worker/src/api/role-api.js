@@ -14,7 +14,6 @@ app.put('/role/setDefault', async (c) => {
 	return c.json(result.ok());
 });
 
-
 app.put('/role/set', async (c) => {
 	await roleService.setRole(c, await c.req.json());
 	return c.json(result.ok());

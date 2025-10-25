@@ -16,6 +16,6 @@ export function setBackground(background) {
     return http.put('/setting/setBackground',{background})
 }
 
-export function physicsDeleteAll() {
-    return http.delete('/setting/physicsDeleteAll')
+export function deleteBackground() {
+    return http.delete('/setting/deleteBackground')
 }

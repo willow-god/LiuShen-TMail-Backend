@@ -11,11 +11,15 @@ import app from '../hono/hono';
 const exclude = [
 	'/login',
 	'/register',
-	'/file',
+	'/oss',
 	'/setting/websiteConfig',
 	'/webhooks',
 	'/init',
-	'/public/genToken'
+	'/public/genToken',
+	'/telegram',
+	'/test',
+	'/auth/oauth/callback',
+	'/auth/oauth/login'
 ];
 
 const requirePerms = [
@@ -34,6 +38,7 @@ const requirePerms = [
 	'/allEmail/list',
 	'/allEmail/delete',
 	'/setting/setBackground',
+	'/setting/deleteBackground',
 	'/setting/set',
 	'/setting/query',
 	'/user/delete',
@@ -60,33 +65,29 @@ const premKey = {
 	'account:delete': ['/account/delete'],
 	'my:delete': ['/my/delete'],
 	'role:add': ['/role/add'],
-	'role:set': ['/role/set','/role/setDefault'],
+	'role:set': ['/role/set', '/role/setDefault'],
 	'role:query': ['/role/list', '/role/tree'],
 	'role:delete': ['/role/delete'],
-	'user:query': ['/user/list','/user/allAccount'],
+	'user:query': ['/user/list', '/user/allAccount'],
 	'user:add': ['/user/add'],
 	'user:reset-send': ['/user/resetSendCount'],
 	'user:set-pwd': ['/user/setPwd'],
 	'user:set-status': ['/user/setStatus'],
 	'user:set-type': ['/user/setType'],
-	'user:delete': ['/user/delete','/user/deleteAccount'],
+	'user:delete': ['/user/delete', '/user/deleteAccount'],
 	'all-email:query': ['/allEmail/list'],
-	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
+	'all-email:delete': ['/allEmail/delete', '/allEmail/batchDelete'],
 	'setting:query': ['/setting/query'],
-	'setting:set': ['/setting/set', '/setting/setBackground'],
+	'setting:set': ['/setting/set', '/setting/setBackground', '/setting/deleteBackground'],
 	'analysis:query': ['/analysis/echarts'],
 	'reg-key:add': ['/regKey/add'],
-	'reg-key:query': ['/regKey/list','/regKey/history'],
-	'reg-key:delete': ['/regKey/delete','/regKey/clearNotUse'],
+	'reg-key:query': ['/regKey/list', '/regKey/history'],
+	'reg-key:delete': ['/regKey/delete', '/regKey/clearNotUse'],
 };
 
 app.use('*', async (c, next) => {
 
 	const path = c.req.path;
-
-	if (path.startsWith('/test')) {
-		return await next();
-	}
 
 	const index = exclude.findIndex(item => {
 		return path.startsWith(item);
@@ -155,13 +156,15 @@ app.use('*', async (c, next) => {
 		await c.env.kv.put(KvConst.AUTH_INFO + userId, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
 	}
 
-	c.set('user',authInfo.user)
+	c.set('user', authInfo.user)
 
 	return await next();
 });
 
 function permKeyToPaths(permKeys) {
+
 	const paths = [];
+
 	for (const key of permKeys) {
 		const routeList = premKey[key];
 		if (routeList && Array.isArray(routeList)) {

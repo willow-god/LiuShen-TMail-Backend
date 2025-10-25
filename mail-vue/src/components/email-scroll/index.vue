@@ -494,8 +494,8 @@ function getEmailList(refresh = false) {
   props.getEmailList(queryParam.emailId, queryParam.size).then(async data => {
     let end = Date.now();
     let duration = end - start;
-    if (duration < 500 && !queryParam.emailId) {
-        await sleep(500 - duration)
+    if (duration < 300 && !queryParam.emailId) {
+        await sleep(300 - duration)
     }
     firstLoad.value = false
 
