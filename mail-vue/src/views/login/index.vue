@@ -45,7 +45,7 @@
           >{{ $t('loginBtn') }}
           </el-button>
           <el-button class="btn" v-if="settingStore.settings.linuxdoSwitch"  style="margin-top: 10px"  @click="linuxDoLogin">
-            <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
+            <el-avatar src="/image/liushen.webp" :size="18" style="margin-right: 10px" />清羽通行证
           </el-button>
         </div>
         <div v-show="show !== 'login'">
@@ -252,7 +252,7 @@ const openSelect = () => {
 
 function linuxDoLogin() {
   const clientId = settingStore.settings.linuxdoClientId
-  
+
   const redirectUri = encodeURIComponent(settingStore.settings.linuxdoCallbackUrl)
   window.location.href =
       `https://auth.liushen.fun/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email`
