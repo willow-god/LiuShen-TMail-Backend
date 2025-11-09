@@ -252,6 +252,7 @@ const openSelect = () => {
 
 function linuxDoLogin() {
   const clientId = settingStore.settings.linuxdoClientId
+  
   const redirectUri = encodeURIComponent(settingStore.settings.linuxdoCallbackUrl)
   window.location.href =
       `https://auth.liushen.fun/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email`
