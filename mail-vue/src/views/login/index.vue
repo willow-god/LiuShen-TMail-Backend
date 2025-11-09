@@ -45,7 +45,7 @@
           >{{ $t('loginBtn') }}
           </el-button>
           <el-button class="btn" v-if="settingStore.settings.linuxdoSwitch"  style="margin-top: 10px"  @click="linuxDoLogin">
-            <el-avatar src="/image/liushen.webp" :size="18" style="margin-right: 10px" />清羽通行证
+            <el-avatar src="/image/liushen.png" :size="18" style="margin-right: 10px" />清羽通行证
           </el-button>
         </div>
         <div v-show="show !== 'login'">
