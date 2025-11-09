@@ -44,7 +44,7 @@ const oauthService = {
 		reqParams.append('redirect_uri', c.env.linuxdo_callback_url)
 		reqParams.append('grant_type', 'authorization_code')
 
-		const tokenRes = await fetch("https://connect.linux.do/oauth2/token", {
+		const tokenRes = await fetch("https://auth.liushen.fun/api/login/oauth/access_token", {
 			method: "POST",
 			headers: { "Content-Type": "application/x-www-form-urlencoded" },
 			body: reqParams.toString()
@@ -56,7 +56,7 @@ const oauthService = {
 
 		token = await tokenRes.json()
 
-		const userRes = await fetch('https://connect.linux.do/api/user', {
+		const userRes = await fetch('https://auth.liushen.fun/api/userinfo', {
 			headers: {
 				Authorization: 'Bearer ' + token.access_token
 			}
