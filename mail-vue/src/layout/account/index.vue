@@ -377,15 +377,6 @@ function submit() {
     return
   }
 
-  if (addForm.email.length < settingStore.settings.minEmailPrefix) {
-    ElMessage({
-      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
   if (!isEmail(addForm.email + addForm.suffix)) {
     ElMessage({
       message: t('notEmailMsg'),

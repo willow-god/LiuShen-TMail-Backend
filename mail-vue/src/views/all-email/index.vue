@@ -397,7 +397,7 @@ function getEmailList(emailId, size) {
 }
 
 .clear {
-  @media (max-width: 409px) {
+  @media (max-width: 407px) {
     position: absolute;
     top: 41px;
     left: 242px;
@@ -405,18 +405,10 @@ function getEmailList(emailId, size) {
 }
 
 :deep(.reload) {
-  @media (max-width: 409px) {
+  @media (max-width: 407px) {
     position: absolute;
     top: 42px;
     left: 208px;
-  }
-}
-
-:deep(.delete) {
-  @media (max-width: 443px) {
-    position: absolute;
-    top: 43px;
-    left: 284px;
   }
 }
 </style>

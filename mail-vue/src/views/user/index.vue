@@ -43,13 +43,6 @@
           <el-table-column :width="expandWidth" type="expand">
             <template #default="props">
               <div class="details">
-                <div v-if="props.row.username"><span class="details-item-title">LinuxDo:</span>
-                  <el-avatar :src="props.row.avatar" :size="30" class="linuxdo-avatar"  />
-                  <span style="margin: 0 10px">用户名：{{props.row.username}}</span>
-                  <span>
-                    等级：<el-tag type="success">{{props.row.trustLevel}}</el-tag>
-                  </span>
-                </div>
                 <div v-if="!sendNumShow"><span
                     class="details-item-title">{{ $t('tabSent') }}:</span>{{ props.row.sendEmailCount }}
                 </div>
@@ -109,10 +102,7 @@
           <el-table-column show-overflow-tooltip :tooltip-formatter="tableRowFormatter" :label="$t('tabEmailAddress')"
                            :min-width="emailWidth">
             <template #default="props">
-              <div style="display: flex;gap: 5px">
-                <div class="email-row">{{ props.row.email }}</div>
-                <el-tag type="warning" v-if="props.row.username">L</el-tag>
-              </div>
+              <div class="email-row">{{ props.row.email }}</div>
             </template>
           </el-table-column>
           <el-table-column :formatter="formatterReceive" label-class-name="receive" column-key="receive"
@@ -1003,11 +993,6 @@ function adjustWidth() {
     font-weight: bold;
     padding-right: 10px;
   }
-}
-
-:deep(.linuxdo-avatar) {
-  position: relative !important;
-  top: 10px;
 }
 
 .account-pagination {

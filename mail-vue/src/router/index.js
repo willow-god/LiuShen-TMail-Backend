@@ -135,14 +135,10 @@ function loadBackground(next) {
             next()
         };
 
-        setTimeout(() => {
-            console.warn("背景加载超时，已放行");
-            next()
-        }, 3000)
-
     } else {
         next()
     }
+
 
 }
 

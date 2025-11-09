@@ -66,51 +66,6 @@
 
 - **File Storage**: [Cloudflare R2](https://developers.cloudflare.com/r2/)
 
-## 目录结构
-
-```
-cloud-mail
-├── mail-worker				    # Backend worker project
-│   ├── src                  
-│   │   ├── api	 			    # API layer
-│   │   ├── const  			    # Project constants
-│   │   ├── dao                 # Data access layer
-│   │   ├── email			    # Email processing and handling
-│   │   ├── entity			    # Database entities
-│   │   ├── error			    # Custom exceptions
-│   │   ├── hono			    # Web framework, middleware, error handling
-│   │   ├── i18n			    # Internationalization
-│   │   ├── init			    # Database and cache initialization
-│   │   ├── model			    # Response data models
-│   │   ├── security			# Authentication and authorization
-│   │   ├── service			    # Business logic layer
-│   │   ├── template			# Message templates
-│   │   ├── utils			    # Utility functions
-│   │   └── index.js			# Entry point
-│   ├── package.json			# Project dependencies
-│   └── wrangler.toml			# Project configuration
-│
-├─ mail-vue				        # Frontend Vue project
-│   ├── src
-│   │   ├── axios 			    # Axios configuration
-│   │   ├── components			# Custom components
-│   │   ├── echarts			    # ECharts integration
-│   │   ├── i18n			    # Internationalization
-│   │   ├── init			    # Startup initialization
-│   │   ├── layout			    # Main layout components
-│   │   ├── perm			    # Permissions and access control
-│   │   ├── request			    # API request layer
-│   │   ├── router			    # Router configuration
-│   │   ├── store			    # Global state management
-│   │   ├── utils			    # Utility functions
-│   │   ├── views			    # Page components
-│   │   ├── app.vue			    # Root component
-│   │   ├── main.js			    # Entry JS file
-│   │   └── style.css			# Global styles
-│   ├── package.json			# Project dependencies
-└── └── env.release				# Environment configuration
-
-```
 
 ## Support
 

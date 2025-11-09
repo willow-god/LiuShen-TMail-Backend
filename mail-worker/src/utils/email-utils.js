@@ -15,16 +15,9 @@ const emailUtils = {
 	},
 
 	htmlToText(content) {
-		if (!content) return ''
-		try {
-			const { document } = parseHTML(content);
-			document.querySelectorAll('style, script, title').forEach(el => el.remove());
-			let text = document.body.innerText;
-			return text.trim();
-		} catch (e) {
-			console.error(e)
-			return ''
-		}
+		const { document } = parseHTML(content);
+		document.querySelectorAll('style, script, title').forEach(el => el.remove());
+		return document.documentElement.innerText;
 	}
 };
 

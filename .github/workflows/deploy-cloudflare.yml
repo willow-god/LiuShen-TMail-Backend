@@ -22,10 +22,6 @@ jobs:
       DOMAIN: ${{ secrets.DOMAIN }}
       ADMIN: ${{ secrets.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      LINUXDO_CLIENT_ID: ${{ secrets.LINUXDO_CLIENT_ID }}
-      LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET }}
-      LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL }}
-      LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH }}
 
     outputs:
       deployment_skipped: ${{ steps.deploy.outputs.deployment_skipped }}
@@ -82,10 +78,6 @@ jobs:
           sed -i "s|\"\${DOMAIN}\"|${DOMAIN}|g" "$CONFIG_FILE"
           sed -i "s|\${ADMIN}|${ADMIN}|g" "$CONFIG_FILE"
           sed -i "s|\${JWT_SECRET}|${JWT_SECRET}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CLIENT_ID}|${LINUXDO_CLIENT_ID}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CLIENT_SECRET}|${LINUXDO_CLIENT_SECRET}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CALLBACK_URL}|${LINUXDO_CALLBACK_URL}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_SWITCH}|${LINUXDO_SWITCH}|g" "$CONFIG_FILE"
 
           echo "🔍 Debug: Checking configuration after replacement..."
           echo "R2_BUCKET_NAME value: '$R2_BUCKET_NAME'"
@@ -135,7 +127,6 @@ jobs:
 
       - name: Delete workflow runs
         uses: GitRML/delete-workflow-runs@main
-        continue-on-error: true
         with:
           retain_days: '3'
           keep_minimum_runs: '0'

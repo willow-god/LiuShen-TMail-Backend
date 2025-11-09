@@ -1,6 +1,6 @@
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
-import {emailConst} from "../const/entity-const";
+import { emailConst } from "../const/entity-const";
 import { t } from '../i18n/i18n'
 
 const init = {
@@ -24,57 +24,88 @@ const init = {
 		await this.v2DB(c);
 		await this.v2_3DB(c);
 		await this.v2_4DB(c);
+		await this.v2_5DB(c);
+		await this.v2_6DB(c);
 		await settingService.refresh(c);
 		return c.text(t('initSuccess'));
 	},
 
-	async v2_4DB(c) {
+	async v2_5DB(c) {
 		try {
 			await c.env.db.prepare(`
-				CREATE TABLE IF NOT EXISTS oauth (
-					oauth_id INTEGER PRIMARY KEY AUTOINCREMENT,
-					oauth_user_id TEXT,
-					username TEXT,
-					name TEXT,
-					avatar TEXT,
-					active INTEGER,
-					trust_level INTEGER,
-					silenced INTEGER,
-					create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-					platform INTEGER NOT NULL DEFAULT 0,
-					user_id INTEGER NOT NULL DEFAULT 0
+				CREATE TABLE IF NOT EXISTS oauth_binding (
+					binding_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					provider TEXT NOT NULL,
+					oauth_id TEXT NOT NULL,
+					oauth_email TEXT,
+					oauth_name TEXT,
+					access_token TEXT,
+					refresh_token TEXT,
+					expires_at TEXT,
+					create_time TEXT DEFAULT CURRENT_TIMESTAMP,
+					update_time TEXT DEFAULT CURRENT_TIMESTAMP,
+					UNIQUE(user_id, provider),
+					FOREIGN KEY(user_id) REFERENCES user(user_id)
 				)
 			`).run();
 		} catch (e) {
-			console.error(e)
+			console.warn(`跳过 OAuth 绑定表创建，原因：${e.message}`);
 		}
+	},
 
+	async v2_6DB(c) {
 		try {
-			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN min_email_prefix INTEGER NOT NULL DEFAULT 1;`).run();
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_custom_provider_name TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_tenant_id TEXT NOT NULL DEFAULT '';`)
+			]);
 		} catch (e) {
-			console.error(e)
+			console.warn(`跳过 OAuth 自定义字段添加，原因：${e.message}`);
+		}
+	},
+
+	async v2_4DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oidc_enabled INTEGER NOT NULL DEFAULT 1;`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oidc_provider TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oidc_client_id TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oidc_client_secret TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oidc_discovery_url TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oidc_scopes TEXT NOT NULL DEFAULT 'openid profile email';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_enabled INTEGER NOT NULL DEFAULT 1;`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_provider TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_client_id TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_client_secret TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_auth_url TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_token_url TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_user_info_url TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN oauth_scopes TEXT NOT NULL DEFAULT 'user:email';`)
+			]);
+		} catch (e) {
+			console.warn(`跳过 OIDC/OAuth 字段添加，原因：${e.message}`);
 		}
 	},
 
 	async v2_3DB(c) {
-		try {
-			await c.env.db.batch([
-				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN force_path_style	INTEGER NOT NULL DEFAULT 1;`),
-				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN kv_storage INTEGER NOT NULL DEFAULT 1;`),
-				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN custom_domain TEXT NOT NULL DEFAULT '';`),
-				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_msg_to TEXT NOT NULL DEFAULT 'show';`),
-				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_msg_from TEXT NOT NULL DEFAULT 'only-name';`)
-			]);
-		} catch (e) {
-			console.error(e)
+		const columns = [
+			{ sql: `ALTER TABLE setting ADD COLUMN force_path_style INTEGER NOT NULL DEFAULT 1;`, name: 'force_path_style' },
+			{ sql: `ALTER TABLE setting ADD COLUMN kv_storage INTEGER NOT NULL DEFAULT 1;`, name: 'kv_storage' },
+			{ sql: `ALTER TABLE setting ADD COLUMN custom_domain TEXT NOT NULL DEFAULT '';`, name: 'custom_domain' },
+			{ sql: `ALTER TABLE setting ADD COLUMN tg_msg_to TEXT NOT NULL DEFAULT 'show';`, name: 'tg_msg_to' },
+			{ sql: `ALTER TABLE setting ADD COLUMN tg_msg_from TEXT NOT NULL DEFAULT 'only-name';`, name: 'tg_msg_from' }
+		];
+		
+		for (const col of columns) {
+			try {
+				await c.env.db.prepare(col.sql).run();
+			} catch (e) {
+				if (!e.message.includes('duplicate column')) {
+					console.error(`Failed to add column ${col.name}:`, e.message);
+				}
+			}
 		}
-
-		try {
-			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_msg_text TEXT NOT NULL DEFAULT 'show';`).run();
-		} catch (e) {
-			console.error(e)
-		}
-
 	},
 
 	async v2DB(c) {
@@ -104,7 +135,15 @@ const init = {
 
 		const noticeContent = '本项目仅供学习交流，禁止用于违法业务\n' +
 			'<br>\n' +
-			'请遵守当地法规，作者不承担任何法律责任'
+			'请遵守当地法规，作者不承担任何法律责任\n' +
+			'<div style="display: flex;gap: 18px;margin-top: 10px;">\n' +
+			'<a href="https://github.com/eoao/cloud-mail" target="_blank" >\n' +
+			'<img src="https://api.iconify.design/codicon:github-inverted.svg" alt="GitHub" width="25" height="25" />\n' +
+			'</a>\n' +
+			'<a href="https://t.me/cloud_mail_tg" target="_blank" >\n' +
+			'<img src="https://api.iconify.design/logos:telegram.svg" alt="GitHub" width="25" height="25" />\n' +
+			'</a>\n' +
+			'</div>\n'
 
 		const ADD_COLUMN_SQL_LIST = [
 			`ALTER TABLE setting ADD COLUMN reg_verify_count INTEGER NOT NULL DEFAULT 1;`,
@@ -257,7 +296,7 @@ const init = {
 
 	},
 
-	async v1_2DB(c){
+	async v1_2DB(c) {
 
 		const ADD_COLUMN_SQL_LIST = [
 			`ALTER TABLE email ADD COLUMN recipient TEXT NOT NULL DEFAULT '[]';`,
@@ -342,7 +381,7 @@ const init = {
       )
     `).run();
 
-		const {permTotal} = await c.env.db.prepare(`SELECT COUNT(*) as permTotal FROM perm`).first();
+		const { permTotal } = await c.env.db.prepare(`SELECT COUNT(*) as permTotal FROM perm`).first();
 
 		if (permTotal === 0) {
 			await c.env.db.prepare(`
@@ -418,7 +457,7 @@ const init = {
       )
     `).run();
 
-		const {rolePermCount} = await c.env.db.prepare(`SELECT COUNT(*) as rolePermCount FROM role_perm`).first();
+		const { rolePermCount } = await c.env.db.prepare(`SELECT COUNT(*) as rolePermCount FROM role_perm`).first();
 		if (rolePermCount === 0) {
 			await c.env.db.prepare(`
         INSERT INTO role_perm (id, role_id, perm_id) VALUES
@@ -536,13 +575,13 @@ const init = {
 		}
 
 		const queryList = []
-		const {results} = await c.env.db.prepare('SELECT receive_email,email_id FROM email').all();
+		const { results } = await c.env.db.prepare('SELECT receive_email,email_id FROM email').all();
 		results.forEach(emailRow => {
 			const recipient = {}
 			recipient.address = emailRow.receive_email
 			recipient.name = ''
 			const recipientStr = JSON.stringify([recipient]);
-			const sql = c.env.db.prepare('UPDATE email SET recipient = ? WHERE email_id = ?').bind(recipientStr,emailRow.email_id);
+			const sql = c.env.db.prepare('UPDATE email SET recipient = ? WHERE email_id = ?').bind(recipientStr, emailRow.email_id);
 			queryList.push(sql)
 		})
 
@@ -564,11 +603,11 @@ const init = {
 
 		queryList.push(c.env.db.prepare(`ALTER TABLE account ADD COLUMN name TEXT NOT NULL DEFAULT ''`));
 
-		const {results} = await c.env.db.prepare(`SELECT account_id, email FROM account`).all();
+		const { results } = await c.env.db.prepare(`SELECT account_id, email FROM account`).all();
 
 		results.forEach(accountRow => {
 			const name = emailUtils.getName(accountRow.email);
-			const sql = c.env.db.prepare('UPDATE account SET name = ? WHERE account_id = ?').bind(name,accountRow.account_id);
+			const sql = c.env.db.prepare('UPDATE account SET name = ? WHERE account_id = ?').bind(name, accountRow.account_id);
 			queryList.push(sql)
 		})
 

@@ -5,7 +5,7 @@ export default function emailHtmlTemplate(html, domain) {
 
 	const { document } = parseHTML(html);
 	document.querySelectorAll('script').forEach(script => script.remove());
-	html = document.toString();
+	html = document.documentElement.outerHTML;
 	html = html.replace(/{{domain}}/g, domainUtils.toOssDomain(domain) + '/');
 
 	return `<!DOCTYPE html>

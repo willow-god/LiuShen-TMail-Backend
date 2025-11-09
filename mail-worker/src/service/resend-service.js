@@ -34,12 +34,6 @@ const resendService = {
 			params.message = null
 		}
 
-		if (body.type === 'email.failed') {
-			params.status = emailConst.status.FAILED
-			params.resendEmailId = body.data.email_id
-			params.message = body.data.failed.reason
-		}
-
 		const emailRow = await emailService.updateEmailStatus(c, params)
 
 		if (!emailRow) {

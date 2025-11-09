@@ -22,16 +22,12 @@ import verifyRecordService from './verify-record-service';
 
 const loginService = {
 
-	async register(c, params, oauth = false) {
+	async register(c, params) {
 
 		const { email, password, token, code } = params;
 
-		let {regKey, register, registerVerify, regVerifyCount, minEmailPrefix} = await settingService.query(c)
+		const {regKey, register, registerVerify, regVerifyCount} = await settingService.query(c)
 
-		if (oauth) {
-			registerVerify = settingConst.registerVerify.CLOSE;
-			register = settingConst.register.OPEN;
-		}
 
 		if (register === settingConst.register.CLOSE) {
 			throw new BizError(t('regDisabled'));
@@ -41,20 +37,16 @@ const loginService = {
 			throw new BizError(t('notEmail'));
 		}
 
-		if (emailUtils.getName(email).length < minEmailPrefix) {
-			throw new BizError(t('minEmailPrefix', { msg: minEmailPrefix } ));
-		}
-
-		if (emailUtils.getName(email).length > 64) {
-			throw new BizError(t('emailLengthLimit'));
-		}
-
 		if (password.length > 30) {
 			throw new BizError(t('pwdLengthLimit'));
 		}
 
+		if (emailUtils.getName(email).length > 30) {
+			throw new BizError(t('emailLengthLimit'));
+		}
+
 		if (password.length < 6) {
-			throw new BizError(t('pwdMinLength'));
+			throw new BizError(t('pwdMinLengthLimit'));
 		}
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
@@ -85,6 +77,7 @@ const loginService = {
 		if (accountRow) {
 			throw new BizError(t('isRegAccount'));
 		}
+
 
 		let defType = null
 
@@ -195,11 +188,11 @@ const loginService = {
 		return { type: regKeyRow.roleId, regKeyId: regKeyRow.regKeyId };
 	},
 
-	async login(c, params, noVerifyPwd = false) {
+	async login(c, params) {
 
 		const { email, password } = params;
 
-		if ((!email || !password) && !noVerifyPwd) {
+		if (!email || !password) {
 			throw new BizError(t('emailAndPwdEmpty'));
 		}
 
@@ -217,7 +210,7 @@ const loginService = {
 			throw new BizError(t('isBanUser'));
 		}
 
-		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
+		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
 			throw new BizError(t('IncorrectPwd'));
 		}
 

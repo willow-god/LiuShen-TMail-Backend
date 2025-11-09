@@ -1,115 +1,153 @@
-import BizError from "../error/biz-error";
-import orm from "../entity/orm";
-import {oauth} from "../entity/oauth";
-import { eq } from 'drizzle-orm';
-import userService from "./user-service";
-import loginService from "./login-service";
-import cryptoUtils from "../utils/crypto-utils";
+import { eq, and } from 'drizzle-orm';
+import orm from '../entity/orm';
+import oauthBinding from '../entity/oauth-binding';
+import userService from './user-service';
+import accountService from './account-service';
+import BizError from '../error/biz-error';
+import { t } from '../i18n/i18n';
+import JwtUtils from '../utils/jwt-utils';
+import { v4 as uuidv4 } from 'uuid';
+import constant from '../const/constant';
+import KvConst from '../const/kv-const';
+import dayjs from 'dayjs';
 
 const oauthService = {
-
-	async bindUser(c, params) {
-
-		const { email, oauthUserId, code } = params;
-
-		const oauthRow = await this.getById(c, oauthUserId);
-
-		let userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
-
-		if (userRow) {
-			throw new BizError('用户已绑定有邮箱')
-		}
-
-		await loginService.register(c, { email, password: cryptoUtils.genRandomPwd(), code }, true);
-
-		userRow = await userService.selectByEmail(c, email);
-
-		orm(c).update(oauth).set({ userId: userRow.userId }).where(eq(oauth.oauthUserId, oauthUserId)).run();
-		const jwtToken = await loginService.login(c, { email, password: null }, true);
-
-		return { userInfo: oauthRow, token: jwtToken}
+	// Get user's OAuth bindings
+	async getUserBindings(c, userId) {
+		const db = orm(c);
+		const bindings = await db.select().from(oauthBinding).where(eq(oauthBinding.userId, userId));
+		// Don't return access tokens or refresh tokens to client
+		return bindings.map(b => ({
+			provider: b.provider,
+			oauthId: b.oauthId,
+			oauthEmail: b.oauthEmail,
+			oauthName: b.oauthName,
+			createTime: b.createTime
+		}));
 	},
 
-	async linuxDoLogin(c, params) {
+	// Bind OAuth account to user
+	async bindOauthAccount(c, userId, provider, oauthData) {
+		const db = orm(c);
+		
+		// Check if already bound
+		const existing = await db.select().from(oauthBinding).where(
+			and(
+				eq(oauthBinding.userId, userId),
+				eq(oauthBinding.provider, provider)
+			)
+		);
 
-		const { code } = params;
-
-		let token = '';
-		let userInfo = {}
-
-		const reqParams = new URLSearchParams()
-		reqParams.append('client_id', c.env.linuxdo_client_id)
-		reqParams.append('client_secret', c.env.linuxdo_client_secret)
-		reqParams.append('code', code)
-		reqParams.append('redirect_uri', c.env.linuxdo_callback_url)
-		reqParams.append('grant_type', 'authorization_code')
-
-		const tokenRes = await fetch("https://auth.liushen.fun/api/login/oauth/access_token", {
-			method: "POST",
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-			body: reqParams.toString()
-		})
-
-		if (!tokenRes.ok) {
-			throw new BizError(tokenRes.statusText)
+		if (existing.length > 0) {
+			throw new BizError(t('oauthAlreadyBound'), 400);
 		}
 
-		token = await tokenRes.json()
+		// Check if OAuth ID is already used by another user
+		const used = await db.select().from(oauthBinding).where(
+			and(
+				eq(oauthBinding.provider, provider),
+				eq(oauthBinding.oauthId, oauthData.oauthId)
+			)
+		);
 
-		const userRes = await fetch('https://auth.liushen.fun/api/userinfo', {
-			headers: {
-				Authorization: 'Bearer ' + token.access_token
-			}
+		if (used.length > 0) {
+			throw new BizError(t('oauthIdAlreadyUsed'), 400);
+		}
+
+		// Insert binding
+		await db.insert(oauthBinding).values({
+			userId,
+			provider,
+			oauthId: oauthData.oauthId,
+			oauthEmail: oauthData.oauthEmail,
+			oauthName: oauthData.oauthName,
+			accessToken: oauthData.accessToken,
+			refreshToken: oauthData.refreshToken,
+			expiresAt: oauthData.expiresAt
 		});
+	},
 
-		if (!userRes.ok) {
-			throw new BizError(userRes.statusText)
+	// Unbind OAuth account
+	async unbindOauthAccount(c, userId, provider) {
+		const db = orm(c);
+		
+		await db.delete(oauthBinding).where(
+			and(
+				eq(oauthBinding.userId, userId),
+				eq(oauthBinding.provider, provider)
+			)
+		);
+	},
+
+	// Find user by OAuth ID
+	async findUserByOauth(c, provider, oauthId) {
+		const db = orm(c);
+		
+		const binding = await db.select().from(oauthBinding).where(
+			and(
+				eq(oauthBinding.provider, provider),
+				eq(oauthBinding.oauthId, oauthId)
+			)
+		);
+
+		if (binding.length === 0) {
+			return null;
 		}
 
-		userInfo = await userRes.json();
+		return binding[0];
+	},
 
-		userInfo.oauthUserId = String(userInfo.id);
-		userInfo.active = userInfo.active ? 0 : 1;
-		userInfo.silenced = userInfo.active ? 0 : 1;
-		userInfo.trustLevel = userInfo.trust_level;
-		userInfo.avatar = userInfo.avatar_url;
+	// OAuth login
+	async oauthLogin(c, provider, oauthData) {
+		// Find user by OAuth binding
+		const binding = await this.findUserByOauth(c, provider, oauthData.oauthId);
 
-		const  oauthRow = await this.saveUser(c, userInfo);
-		const userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
+		if (!binding) {
+			throw new BizError(t('oauthUserNotFound'), 404);
+		}
+
+		// Get user
+		const userRow = await userService.selectById(c, binding.userId);
 
 		if (!userRow) {
-			return { userInfo: oauthRow, token: null }
+			throw new BizError(t('notExistUser'), 404);
 		}
 
-		const JwtToken = await loginService.login(c, { email: userRow.email, password: null }, true);
-		return { userInfo: oauthRow, token: JwtToken }
-	},
+		if (userRow.isDel === 1) {
+			throw new BizError(t('isDelUser'), 403);
+		}
 
-	async saveUser(c, userInfo) {
+		if (userRow.status === 1) {
+			throw new BizError(t('isBanUser'), 403);
+		}
 
-		const userInfoRow = await this.getById(c, userInfo.oauthUserId);
+		// Generate JWT token
+		const uuid = uuidv4();
+		const jwt = await JwtUtils.generateToken(c, { userId: userRow.userId, token: uuid });
 
-		if (!userInfoRow) {
-			return await orm(c).insert(oauth).values(userInfo).returning().get();
+		// Update auth info in KV
+		let authInfo = await c.env.kv.get(KvConst.AUTH_INFO + userRow.userId, { type: 'json' });
+
+		if (authInfo) {
+			if (authInfo.tokens.length > 10) {
+				authInfo.tokens.shift();
+			}
+			authInfo.tokens.push(uuid);
 		} else {
-			return await orm(c).update(oauth).set(userInfo).where(eq(oauth.oauthUserId, userInfo.oauthUserId)).returning().get();
+			authInfo = {
+				tokens: [],
+				user: userRow,
+				refreshTime: dayjs().toISOString()
+			};
+			authInfo.tokens.push(uuid);
 		}
 
-	},
+		await userService.updateUserInfo(c, userRow.userId);
+		await c.env.kv.put(KvConst.AUTH_INFO + userRow.userId, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
 
-	async getById(c, oauthUserId) {
-		return await orm(c).select().from(oauth).where(eq(oauth.oauthUserId, oauthUserId)).get();
-	},
+		return jwt;
+	}
+};
 
-	async deleteByUserId(c, userId) {
-		await orm(c).delete(oauth).where(eq(oauth.userId, userId)).run();
-	},
+export default oauthService;
 
-	//定时任务凌晨清除未绑定邮箱的oauth用户
-	async clearNoBindOathUser(c) {
-		await orm(c).delete(oauth).where(eq(oauth.userId, 0)).run();
-	},
-
-}
-
-export default  oauthService

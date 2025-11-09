@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer} from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 export const setting = sqliteTable('setting', {
 	register: integer('register').default(0).notNull(),
 	receive: integer('receive').default(0).notNull(),
@@ -45,7 +45,21 @@ export const setting = sqliteTable('setting', {
 	customDomain: text('custom_domain').default('').notNull(),
 	tgMsgFrom: text('tg_msg_from').default('only-name').notNull(),
 	tgMsgTo: text('tg_msg_to').default('show').notNull(),
-	tgMsgText: text('tg_msg_text').default('hide').notNull(),
-	minEmailPrefix: integer('min_email_prefix').default(0).notNull()
+	oidcEnabled: integer('oidc_enabled').default(1).notNull(),
+	oidcProvider: text('oidc_provider').default('').notNull(),
+	oidcClientId: text('oidc_client_id').default('').notNull(),
+	oidcClientSecret: text('oidc_client_secret').default('').notNull(),
+	oidcDiscoveryUrl: text('oidc_discovery_url').default('').notNull(),
+	oidcScopes: text('oidc_scopes').default('').notNull(),
+	oauthEnabled: integer('oauth_enabled').default(1).notNull(),
+	oauthProvider: text('oauth_provider').default('').notNull(),
+	oauthCustomProviderName: text('oauth_custom_provider_name').default('').notNull(),
+	oauthTenantId: text('oauth_tenant_id').default('').notNull(),
+	oauthClientId: text('oauth_client_id').default('').notNull(),
+	oauthClientSecret: text('oauth_client_secret').default('').notNull(),
+	oauthAuthUrl: text('oauth_auth_url').default('').notNull(),
+	oauthTokenUrl: text('oauth_token_url').default('').notNull(),
+	oauthUserInfoUrl: text('oauth_user_info_url').default('').notNull(),
+	oauthScopes: text('oauth_scopes').default('').notNull()
 });
 export default setting

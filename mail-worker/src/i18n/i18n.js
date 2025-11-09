@@ -25,6 +25,6 @@ i18next.init({
 	resources,
 });
 
-export const t = (key, values) => i18next.t(key, values)
+export const t = (key) => i18next.t(key)
 
 export default i18next;

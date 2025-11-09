@@ -1,6 +1,4 @@
-import emailUtils from '../utils/email-utils';
-
-export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText) {
+export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom) {
 
 	let template = `<b>${email.subject}</b>`
 
@@ -20,22 +18,14 @@ export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText) {
 			template += `
 
 收件人：\u200B${email.toEmail}`
+			return template
+		}
 
-		} else if(tgMsgTo === 'show') {
+	if(tgMsgTo === 'show') {
 		template += `
 收件人：\u200B${email.toEmail}`
 	}
 
-	const text = (email.text || emailUtils.htmlToText(email.content))
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
-
-	if(tgMsgText === 'show') {
-		template += `
-
-${text}`
-	}
-
-	return template;
+		return template;
 
 }

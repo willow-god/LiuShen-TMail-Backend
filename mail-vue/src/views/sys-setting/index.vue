@@ -61,16 +61,7 @@
                              v-model="setting.manyEmail"/>
                 </div>
               </div>
-              <div class="setting-item">
-                <div>
-                  <span>{{ $t('emailPrefix') }}</span>
-                </div>
-                <div class="forward">
-                  <el-button class="opt-button" size="small" type="primary" @click="openEmailPrefix">
-                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
-                  </el-button>
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -352,13 +343,34 @@
             </div>
           </div>
 
+          <!-- OAuth Login Configuration Card -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('oauthConfig') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('oauthEnabled') }}</span>
+                  <el-tooltip effect="dark" content="用户可以在登录页面使用 OAuth 账号登录，需要先注册账号后才能绑定">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <span>{{ setting.oauthEnabled === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="oauthSettingShow = true">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card about">
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">
               <div class="concerning-item">
                 <span>{{ $t('version') }} :</span>
                 <el-badge is-dot :hidden="!hasUpdate">
-                  <el-button @click="jump('https://github.com/maillab/cloud-mail/releases')">
+                  <el-button @click="jump('https://github.com/eoao/cloud-mail/releases')">
                     {{ currentVersion }}
                     <template #icon>
                       <Icon icon="qlementine-icons:version-control-16" style="font-size: 20px" color="#1890FF"/>
@@ -369,7 +381,7 @@
               <div class="concerning-item">
                 <span>{{ $t('community') }} : </span>
                 <div class="community">
-                  <el-button @click="jump('https://github.com/maillab/cloud-mail')">
+                  <el-button @click="jump('https://github.com/eoao/cloud-mail')">
                     Github
                     <template #icon>
                       <Icon icon="codicon:github-inverted" width="22" height="22"/>
@@ -511,17 +523,6 @@
             <el-select  v-model="tgMsgTo" >
               <el-option
                   v-for="item in tgMsgToOption"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-              />
-            </el-select>
-          </div>
-          <div class="tg-msg-label">
-            <span>{{t('emailText')}}</span>
-            <el-select  v-model="tgMsgText" >
-              <el-option
-                  v-for="item in tgMsgTextOption"
                   :key="item.value"
                   :label="item.label"
                   :value="item.value"
@@ -713,15 +714,68 @@
           </div>
         </form>
       </el-dialog>
-      <el-dialog v-model="emailPrefixShow" :title="t('emailPrefix')" width="30"  >
-        <div class="email-prefix">
-          <div>{{ t('atLeast') }}</div>
-          <el-input-number v-model="minEmailPrefix" :min="1" :max="20" @change="EmailPrefixChange" style="width: 150px" >
-            <template #suffix>
-              <span>{{ t('character') }}</span>
-            </template>
-          </el-input-number>
-        </div>
+
+      <!-- OAuth Configuration Dialog -->
+      <el-dialog v-model="oauthSettingShow" :title="t('oauthConfig')" width="400">
+        <el-alert
+          title="说明"
+          type="info"
+          description="用户可以在登录页面使用 OAuth 账号登录。用户需要先用邮箱注册账号，然后在登录后的个人设置中绑定 OAuth 账号。"
+          :closable="false"
+          style="margin-bottom: 15px"
+        />
+        <form>
+          <div class="dialog-form-item">
+            <label>{{ $t('oauthEnabled') }}</label>
+            <el-switch :active-value="0" :inactive-value="1" v-model="oauthForm.enabled"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthCallbackUrl') }}</label>
+            <div class="callback-url-display">{{ oauthCallbackUrl }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('selectProvider') }}</label>
+            <el-select class="dialog-input" v-model="oauthForm.provider" @change="handleOauthProviderChange" clearable>
+              <el-option v-for="item in oauthProviderOptions" :key="item.value" :label="item.label" :value="item.value"/>
+            </el-select>
+          </div>
+          <div class="form-group" v-if="oauthForm.provider === 'custom'">
+            <label class="form-label">{{ $t('customProviderName') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.customProviderName" :placeholder="$t('customProviderNamePlaceholder')"/>
+          </div>
+          <div class="form-group" v-if="oauthForm.provider === 'microsoft'">
+            <label class="form-label">{{ $t('oauthTenantId') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.tenantId" :placeholder="$t('oauthTenantIdPlaceholder')"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthClientId') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.clientId"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthClientSecret') }}</label>
+            <el-input class="dialog-input" type="password" v-model="oauthForm.clientSecret"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthAuthUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.authUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthTokenUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.tokenUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthUserInfoUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.userInfoUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthScopes') }}</label>
+            <el-input style="margin-bottom: 10px" type="text" v-model="oauthForm.scopes"/>
+          </div>
+          <div class="dialog-footer">
+            <el-button @click="oauthSettingShow = false">{{ $t('cancel') }}</el-button>
+            <el-button type="primary" :loading="settingLoading" @click="saveOauthConfig">{{ $t('save') }}</el-button>
+          </div>
+        </form>
       </el-dialog>
     </el-scrollbar>
   </div>
@@ -749,7 +803,7 @@ defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v2.4.0'
+const currentVersion = 'v2.3.0'
 const hasUpdate = ref(false)
 let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
@@ -766,7 +820,6 @@ const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
 const forwardRulesShow = ref(false)
-const emailPrefixShow = ref(false)
 const showResendList = ref(false)
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
@@ -776,7 +829,6 @@ const settingLoading = ref(false)
 const clearS3Loading = ref(false)
 const r2DomainInput = ref('')
 const loginOpacity = ref(0)
-const minEmailPrefix = ref(0)
 const backgroundUrl = ref('')
 let backgroundFile = {}
 const showSetBackground = ref(false)
@@ -786,6 +838,7 @@ let backup = '{}'
 const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
 const regVerifyCountShow = ref(false)
+const oauthSettingShow = ref(false)
 const resendTokenForm = reactive({
   domain: '',
   token: '',
@@ -843,12 +896,70 @@ const ruleType = ref(0)
 const ruleEmail = ref([])
 const tgMsgFrom = ref('')
 const tgMsgTo = ref('')
-const tgMsgText = ref('')
 
 const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}, {label: t('onlyName'), value:'only-name'}]
 const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
-const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
+
+const oauthCallbackUrl = computed(() => {
+  const origin = window.location.origin
+  return `${origin}/api/auth/oauth/callback`
+})
+
+const oauthProviders = {
+  github: {
+    name: 'GitHub',
+    authUrl: 'https://github.com/login/oauth/authorize',
+    tokenUrl: 'https://github.com/login/oauth/access_token',
+    userInfoUrl: 'https://api.github.com/user',
+    scopes: 'user:email'
+  },
+  google: {
+    name: 'Google',
+    authUrl: 'https://auth.liushen.fun/login/oauth/authorize',
+    tokenUrl: 'https://auth.liushen.fun/api/login/oauth/access_token',
+    userInfoUrl: 'https://auth.liushen.fun/api/userinfo',
+    scopes: 'openid profile email'
+  },
+  microsoft: {
+    name: 'Microsoft',
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+    scopes: 'openid profile email User.Read offline_access'
+  }
+}
+
+const oauthProviderOptions = computed(() => [
+  { label: t('selectProvider'), value: '' },
+  { label: 'GitHub', value: 'github' },
+  { label: 'Google', value: 'google' },
+  { label: 'Microsoft', value: 'microsoft' },
+  { label: t('customProvider'), value: 'custom' }
+])
+
+function handleOauthProviderChange(value) {
+  if (value && value !== 'custom' && oauthProviders[value]) {
+    const provider = oauthProviders[value]
+    oauthForm.authUrl = provider.authUrl
+    oauthForm.tokenUrl = provider.tokenUrl
+    oauthForm.userInfoUrl = provider.userInfoUrl
+    oauthForm.scopes = provider.scopes
+  }
+}
+
+const oauthForm = reactive({
+  enabled: 1,
+  provider: '',
+  customProviderName: '',
+  tenantId: '',
+  clientId: '',
+  clientSecret: '',
+  authUrl: '',
+  tokenUrl: '',
+  userInfoUrl: '',
+  scopes: ''
+})
 
 getSettings()
 getUpdate()
@@ -859,13 +970,23 @@ function getSettings() {
     settingStore.domainList = settingData.domainList;
     resendTokenForm.domain = setting.value.domainList[0]
     loginOpacity.value = setting.value.loginOpacity
-    minEmailPrefix.value = setting.value.minEmailPrefix
     firstLoading.value = false
     backgroundUrl.value = setting.value.background?.startsWith('http') ? setting.value.background : ''
     editTitle.value = setting.value.title
     r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
     regVerifyCount.value = setting.value.regVerifyCount
+    // Load OAuth configuration
+    oauthForm.enabled = settingData.oauthEnabled ?? 1
+    oauthForm.provider = settingData.oauthProvider ?? ''
+    oauthForm.customProviderName = settingData.oauthCustomProviderName ?? ''
+    oauthForm.tenantId = settingData.oauthTenantId ?? ''
+    oauthForm.clientId = settingData.oauthClientId ?? ''
+    oauthForm.clientSecret = settingData.oauthClientSecret ?? ''
+    oauthForm.authUrl = settingData.oauthAuthUrl ?? ''
+    oauthForm.tokenUrl = settingData.oauthTokenUrl ?? ''
+    oauthForm.userInfoUrl = settingData.oauthUserInfoUrl ?? ''
+    oauthForm.scopes = settingData.oauthScopes ?? ''
     resetNoticeForm()
     resetAddS3Form()
   })
@@ -919,7 +1040,7 @@ const resendList = computed(() => {
 
 function getUpdate() {
   if (getUpdateErrorCount > 5 || !getUpdateErrorCount) return
-  axios.get('https://api.github.com/repos/maillab/cloud-mail/releases/latest').then(({data}) => {
+  axios.get('https://api.github.com/repos/eoao/cloud-mail/releases/latest').then(({data}) => {
     hasUpdate.value = data.name !== currentVersion
     getUpdateErrorCount = 0
   }).catch(e => {
@@ -965,7 +1086,6 @@ function openTgSetting() {
   tgBotToken.value = setting.value.tgBotToken
   customDomain.value = setting.value.customDomain
   tgMsgFrom.value = setting.value.tgMsgFrom
-  tgMsgText.value = setting.value.tgMsgText
   tgMsgTo.value = setting.value.tgMsgTo
   tgChatId.value = []
   if (setting.value.tgChatId) {
@@ -1013,10 +1133,6 @@ function openThirdEmailSetting() {
     forwardEmail.value.push(...list)
   }
   thirdEmailShow.value = true
-}
-
-function openEmailPrefix() {
-  emailPrefixShow.value = true
 }
 
 function openForwardRules() {
@@ -1108,7 +1224,6 @@ function tgBotSave() {
     tgBotStatus: tgBotStatus.value,
     tgChatId: tgChatId.value + '',
     tgMsgFrom: tgMsgFrom.value,
-    tgMsgText: tgMsgText.value,
     tgMsgTo: tgMsgTo.value
   }
   editSetting(form)
@@ -1136,17 +1251,6 @@ function doOpacityChange() {
   form.loginOpacity = loginOpacity.value
   editSetting(form, true)
 }
-
-function doEmailPrefix() {
-  const form = {}
-  form.minEmailPrefix = minEmailPrefix.value
-  editSetting(form, true)
-}
-
-const EmailPrefixChange = debounce(doEmailPrefix, 1000, {
-  leading: false,
-  trailing: true
-})
 
 const opacityChange = debounce(doOpacityChange, 1000, {
   leading: false,
@@ -1286,6 +1390,22 @@ function jump(href) {
   doc.click()
 }
 
+function saveOauthConfig() {
+  const settingForm = {
+    oauthEnabled: oauthForm.enabled,
+    oauthProvider: oauthForm.provider,
+    oauthCustomProviderName: oauthForm.customProviderName,
+    oauthTenantId: oauthForm.tenantId,
+    oauthClientId: oauthForm.clientId,
+    oauthClientSecret: oauthForm.clientSecret,
+    oauthAuthUrl: oauthForm.authUrl,
+    oauthTokenUrl: oauthForm.tokenUrl,
+    oauthUserInfoUrl: oauthForm.userInfoUrl,
+    oauthScopes: oauthForm.scopes
+  }
+  editSetting(settingForm)
+}
+
 function editSetting(settingForm, refreshStatus = true) {
   if (settingLoading.value) return
   settingLoading.value = true
@@ -1314,9 +1434,9 @@ function editSetting(settingForm, refreshStatus = true) {
     regVerifyCountShow.value = false
     noticePopupShow.value = false
     addS3Show.value = false
+    oauthSettingShow.value = false
   }).catch((e) => {
     loginOpacity.value = setting.value.loginOpacity
-    minEmailPrefix.value = setting.value.minEmailPrefix
     setting.value = {...setting.value, ...JSON.parse(backup)}
   }).finally(() => {
     settingLoading.value = false
@@ -1388,13 +1508,13 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 .background {
-  width: 249px;
-  height: 140px;
+  width: 230px;
+  height: 120px;
   border-radius: 4px;
   border: 1px solid var(--light-border);
   @media (max-width: 500px) {
-    width: 160px;
-    height: 90px;
+    width: 150px;
+    height: 83px;
   }
 }
 
@@ -1564,6 +1684,43 @@ function editSetting(settingForm, refreshStatus = true) {
   height: fit-content !important;
 }
 
+.dialog-input {
+  margin-bottom: 10px;
+}
+
+.dialog-form-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+
+  label {
+    font-weight: 500;
+  }
+}
+
+.form-group {
+  margin-bottom: 15px;
+
+  .form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+}
+
+.callback-url-display {
+  padding: 8px 12px;
+  background-color: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  word-break: break-all;
+  font-family: monospace;
+}
+
 
 :deep(.forward-dialog.el-dialog) {
   width: 500px !important;
@@ -1668,11 +1825,6 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .opt-button {
   width: fit-content !important;
-}
-
-.email-prefix {
-  display: flex;
-  justify-content: space-between;
 }
 
 .s3-button {
