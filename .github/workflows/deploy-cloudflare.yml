@@ -28,7 +28,6 @@ jobs:
       LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH }}
 
     outputs:
-      deployment_skipped: ${{ steps.deploy.outputs.deployment_skipped }}
       worker_url: ${{ steps.deploy.outputs.worker_url }}
 
     steps:
@@ -55,26 +54,36 @@ jobs:
         working-directory: ./mail-worker
         run: npx wrangler telemetry disable
 
-      - name: 🛠️ 设置环境变量和部署 - Set Secrets and Deploy
-        id: deploy
+      - name: 🛠️ 设置环境  - Set secrets
         working-directory: ./mail-worker
         run: |
+          
+          echo "🔐 Starting secrets setup..."
+          
           if [ -z "$D1_DATABASE_ID" ] || [ -z "$KV_NAMESPACE_ID" ]; then
-            echo "⚠️ Required secrets (D1_DATABASE_ID or KV_NAMESPACE_ID) are not set."
-            echo "❌ Skipping deployment."
-            echo "deployment_skipped=true" >> $GITHUB_OUTPUT
-            exit 0
+            echo "❌ Required secrets (D1_DATABASE_ID or KV_NAMESPACE_ID) are not set."
+            exit 1
           fi
           
-          echo "deployment_skipped=false" >> $GITHUB_OUTPUT
+          if [ -z "$JWT_SECRET" ] || grep -q '[?%#/\\]' <<< "$JWT_SECRET"; then
+            echo "❌ JWT_SECRET is empty or contains invalid characters (?, %, #, /, \\)"
+            exit 1
+          fi
+          
+          if ! jq -e 'type == "array"' <<< "$DOMAIN" ; then
+            echo "❌ DOMAIN must be a JSON array ([])."
+            exit 1
+          fi
           
           CONFIG_FILE="wrangler-action.toml"
           
           if [ -z "$R2_BUCKET_NAME" ]; then
-            sed -i "18,20d" "$CONFIG_FILE"
+            sed -i '/\[\[r2_buckets\]\]/,/^$/d' "$CONFIG_FILE"
           fi
           
-          echo "⚙️ Dynamically updating '$CONFIG_FILE' with binding IDs..."
+          if [ -z "$LINUXDO_CLIENT_ID" ] || [ -z "$LINUXDO_CLIENT_SECRET" ]; then
+            sed -i '/^linuxdo_client_id = /,/^linuxdo_switch = /d' "$CONFIG_FILE"
+          fi
 
           sed -i "s|\${D1_DATABASE_ID}|${D1_DATABASE_ID}|g" "$CONFIG_FILE"
           sed -i "s|\${KV_NAMESPACE_ID}|${KV_NAMESPACE_ID}|g" "$CONFIG_FILE"
@@ -86,22 +95,21 @@ jobs:
           sed -i "s|\${LINUXDO_CLIENT_SECRET}|${LINUXDO_CLIENT_SECRET}|g" "$CONFIG_FILE"
           sed -i "s|\${LINUXDO_CALLBACK_URL}|${LINUXDO_CALLBACK_URL}|g" "$CONFIG_FILE"
           sed -i "s|\${LINUXDO_SWITCH}|${LINUXDO_SWITCH}|g" "$CONFIG_FILE"
+          
+          echo "✅ Worker Secrets setup completed."
 
-          echo "🔍 Debug: Checking configuration after replacement..."
-          echo "R2_BUCKET_NAME value: '$R2_BUCKET_NAME'"
-          echo "R2 bucket configuration in $CONFIG_FILE:"
-          grep -A 2 -B 2 "bucket_name" "$CONFIG_FILE" || true
-
-          echo "🔒 Setting Worker secrets..."
-          echo "🚀 Configuration updated. Starting deployment..."
-          npx wrangler deploy -c "$CONFIG_FILE" | tee deploy.log | grep -v "https://.*\.workers\.dev"
+      - name: 🚀 开始部署 - Start deployment
+        id: deploy
+        working-directory: ./mail-worker
+        run: |
+          echo "🚀 Starting deployment..."
+          npx wrangler deploy -c wrangler-action.toml | tee deploy.log | grep -v "https://.*\.workers\.dev" | sed 's/env\.domain (.*)/env.domain (***)/'
           WORKER_URL=$(grep -o "https://.*\.workers\.dev" deploy.log)
           echo "::add-mask::$WORKER_URL"
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
-          echo "✅ Deployment command executed."
+          echo "✅ Deployment completed."
 
-      - name: 🗄️ 初始化数据库 - Initialize Database
-        if: ${{ steps.deploy.outputs.deployment_skipped == 'false' }}
+      - name: 🗄️ 初始化数据库 - Initialize database
         run: |
           
           echo "⏳ Waiting 15s before checking initialization status..."
@@ -113,24 +121,13 @@ jobs:
           echo "🔎 Checking response... (Status: $HTTP_CODE)"
 
           if [ "$HTTP_CODE" = "200" ] && [ "$RESPONSE_BODY" = "初始化成功" -o "$RESPONSE_BODY" = "Successfully initialized" ]; then
-            echo "✅ Database initialization successful!"
+            echo "✅ Database initialization completed."
           elif [ "$HTTP_CODE" = "200" ]; then
             echo "❌ Database initialization error: $RESPONSE_BODY"
+            exit 1
           else
             echo "❌ Database initialization check failed with HTTP status: $HTTP_CODE. response: $RESPONSE_BODY"
-          fi
-
-      - name: 📣 部署状态 - Notify Final Status
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            if [ "${{ steps.deploy.outputs.deployment_skipped }}" == "true" ]; then
-              echo "❌ Deployment was skipped due to missing configuration."
-            else
-              echo "🎉🎉🎉 Hooray! Deployment completed successfully! 🎉🎉🎉"
-            fi
-          else
-            echo "❌❌❌ Oh no! The deployment failed. Please check the logs above for errors. ❌❌❌"
+            exit 1
           fi
 
       - name: Delete workflow runs
