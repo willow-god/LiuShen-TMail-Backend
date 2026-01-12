@@ -33,13 +33,14 @@ import {defineOptions, h, onMounted, reactive, ref, watch} from "vue";
 import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
-import {AccountAllReceiveEnum} from "@/enums/account-enum.js";
+import { useRoute } from 'vue-router'
 import {AutoRefreshEnum} from "@/enums/setting-enum.js";
 
 defineOptions({
   name: 'email'
 })
 
+const route = useRoute();
 const emailStore = useEmailStore();
 const accountStore = useAccountStore();
 const settingStore = useSettingStore();
@@ -76,6 +77,13 @@ const existIds = new Set();
 
 async function latest() {
   while (true) {
+
+    await sleep(1000)
+
+    if (route.name !== 'email') {
+      continue;
+    }
+
     const latestId = scroll.value.latestEmail?.emailId
 
     if (!scroll.value.firstLoad && settingStore.settings.autoRefresh === AutoRefreshEnum.ENABLED) {
@@ -125,10 +133,12 @@ async function latest() {
 
         }
       } catch (e) {
+        if (e.code === 401) {
+          settingStore.settings.autoRefresh = AutoRefreshEnum.DISABLED;
+        }
         console.error(e)
       }
     }
-    await sleep(500)
   }
 }
 
