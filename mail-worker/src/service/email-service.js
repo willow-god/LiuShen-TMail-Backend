@@ -17,9 +17,9 @@ import starService from './star-service';
 import dayjs from 'dayjs';
 import kvConst from '../const/kv-const';
 import { t } from '../i18n/i18n'
-import r2Service from './r2-service';
 import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
+import {sleep} from "../utils/time-utils";
 
 const emailService = {
 
@@ -452,22 +452,30 @@ const emailService = {
 			allReceive = accountRow.allReceive;
 		}
 
-		const list = await orm(c).select({...email}).from(email)
-			.leftJoin(
-				account,
-				eq(account.accountId, email.accountId)
-			)
-			.where(
-				and(
-					eq(email.userId, userId),
-					eq(email.isDel, isDel.NORMAL),
-					eq(account.isDel, isDel.NORMAL),
-					allReceive ? eq(1,1) : eq(email.accountId, accountId),
-					eq(email.type, emailConst.type.RECEIVE),
-					gt(email.emailId, emailId)
-				))
-			.orderBy(desc(email.emailId))
-			.limit(20);
+		let count = 0
+		let list = []
+
+		while ((count < 10) && list.length === 0) {
+			list = await orm(c).select({...email}).from(email)
+				.leftJoin(
+					account,
+					eq(account.accountId, email.accountId)
+				)
+				.where(
+					and(
+						eq(email.userId, userId),
+						eq(email.isDel, isDel.NORMAL),
+						eq(account.isDel, isDel.NORMAL),
+						allReceive ? eq(1,1) : eq(email.accountId, accountId),
+						eq(email.type, emailConst.type.RECEIVE),
+						gt(email.emailId, emailId)
+					))
+				.orderBy(desc(email.emailId))
+				.limit(20);
+
+			await sleep(3000);
+			count++
+		}
 
 		const emailIds = list.map(item => item.emailId);
 

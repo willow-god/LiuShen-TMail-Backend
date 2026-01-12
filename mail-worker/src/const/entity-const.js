@@ -127,6 +127,10 @@ export const settingConst = {
 	forcePathStyle: {
 		OPEN: 0,
 		CLOSE: 1
+	},
+	authRefresh: {
+		OPEN: 1,
+		CLOSE: 0
 	}
 }
 

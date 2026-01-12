@@ -34,6 +34,7 @@ import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
 import {AccountAllReceiveEnum} from "@/enums/account-enum.js";
+import {AutoRefreshEnum} from "@/enums/setting-enum.js";
 
 defineOptions({
   name: 'email'
@@ -77,7 +78,7 @@ async function latest() {
   while (true) {
     const latestId = scroll.value.latestEmail?.emailId
 
-    if (!scroll.value.firstLoad && settingStore.settings.autoRefreshTime) {
+    if (!scroll.value.firstLoad && settingStore.settings.autoRefresh === AutoRefreshEnum.ENABLED) {
       try {
         const accountId = accountStore.currentAccountId
         const allReceive = scroll.value.latestEmail?.allReceive
@@ -127,7 +128,7 @@ async function latest() {
         console.error(e)
       }
     }
-    await sleep(settingStore.settings.autoRefreshTime * 1000)
+    await sleep(500)
   }
 }
 
