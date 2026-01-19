@@ -1,15 +1,14 @@
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
-import { t } from '../i18n/i18n'
 
-const init = {
+const dbInit = {
 	async init(c) {
 
 		const secret = c.req.param('secret');
 
 		if (secret !== c.env.jwt_secret) {
-			return c.text(t('JWTMismatch'));
+			return c.text('❌ JWT secret mismatch');
 		}
 
 		await this.intDB(c);
@@ -28,7 +27,7 @@ const init = {
 		await this.v2_6DB(c);
 		await this.v2_7DB(c);
 		await settingService.refresh(c);
-		return c.text(t('initSuccess'));
+		return c.text('success');
 	},
 
 	async v2_7DB(c) {
@@ -621,4 +620,4 @@ const init = {
 		await c.env.db.batch(queryList);
 	}
 };
-export default init;
+export { dbInit };
