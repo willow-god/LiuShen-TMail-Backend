@@ -26,8 +26,19 @@ const dbInit = {
 		await this.v2_5DB(c);
 		await this.v2_6DB(c);
 		await this.v2_7DB(c);
+		await this.v2_8DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v2_8DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE account ADD COLUMN sort INTEGER NOT NULL DEFAULT 0;`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	async v2_7DB(c) {

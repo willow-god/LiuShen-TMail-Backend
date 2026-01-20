@@ -227,8 +227,7 @@ let skeletonRows = 0
 const timePaddingRight = ref('');
 const keyCount = ref(0)
 const queryParam = reactive({
-  emailId: 0,
-  size: 50,
+  size: 50
 });
 
 defineExpose({
@@ -507,7 +506,7 @@ function addItem(email) {
       emailList.push(email);
     }
 
-    if (email.emailId > latestEmail.value.emailId) {
+    if (email.emailId > latestEmail.value?.emailId) {
       latestEmail.value = email
     }
 
@@ -528,7 +527,7 @@ function addItem(email) {
     }
   }
 
-  if (email.emailId > latestEmail.value.emailId) {
+  if (email.emailId > latestEmail.value?.emailId) {
     latestEmail.value = email
   }
 
@@ -566,6 +565,8 @@ function getEmailList(refresh = false) {
 
   if (reqLock) return;
 
+  let emailId = emailList.length > 0 ? emailList.at(-1).emailId : 0;
+
   reqLock = true
 
   if (!refresh) {
@@ -577,6 +578,7 @@ function getEmailList(refresh = false) {
 
   } else {
     getSkeletonRows()
+    emailId = 0
     loading.value = true
     scrollTop = 0
   }
@@ -587,10 +589,11 @@ function getEmailList(refresh = false) {
     followLoading.value = !refresh;
   }
   let start = Date.now();
-  props.getEmailList(queryParam.emailId, queryParam.size).then(async data => {
+
+  props.getEmailList(emailId, queryParam.size).then(async data => {
     let end = Date.now();
     let duration = end - start;
-    if (duration < 300 && !queryParam.emailId) {
+    if (duration < 300 && !emailId) {
         await sleep(300 - duration)
     }
     firstLoad.value = false
@@ -615,7 +618,6 @@ function getEmailList(refresh = false) {
     followLoading.value = data.list.length >= queryParam.size;
 
     total.value = data.total;
-    queryParam.emailId = data.list.length > 0 ? data.list.at(-1).emailId : 0
   }).finally(() => {
     loading.value = false
     reqLock = false
@@ -653,7 +655,6 @@ function refresh() {
 function refreshList() {
   checkAll.value = false;
   isIndeterminate.value = false;
-  queryParam.emailId = 0;
   getEmailList(true);
 }
 
