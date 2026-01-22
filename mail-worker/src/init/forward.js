@@ -50,7 +50,7 @@ export async function initForward(c, params) {
 	mainList  = [...new Set(mainList)];
 
 	if (mainList.length === 0) {
-		return c.text('Domain does not exist.');
+		return c.text('DOMAIN does not exist in Cloudflare.');
 	}
 
 	//开启主域名电子邮件路由
@@ -62,9 +62,9 @@ export async function initForward(c, params) {
 		});
 
 		const body = await res.json();
-
+		const error = body.errors[0];
 		if(!res.ok) {
-			return c.json(body);
+			return c.text(`${error.code} ${error.message}`);
 		}
 
 	}
@@ -93,9 +93,9 @@ export async function initForward(c, params) {
 		});
 
 		const body = await res.json();
-
+		const error = body.errors[0];
 		if(!res.ok) {
-			return c.json(body);
+			return c.text(`${error.code} ${error.message}`);
 		}
 
 	}
@@ -112,9 +112,9 @@ export async function initForward(c, params) {
 		});
 
 		const body = await res.json();
-
+		const error = body.errors[0];
 		if(!res.ok) {
-			return c.json(body);
+			return c.text(`${error.code} ${error.message}`);
 		}
 
 	}

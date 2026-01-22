@@ -64,13 +64,32 @@ jobs:
           echo "🔐 Starting environment setup..."
           
           if [ -z "$JWT_SECRET" ] || grep -q '[?%#/\\]' <<< "$JWT_SECRET"; then
-            echo "❌ JWT_SECRET is empty or contains invalid characters (?, %, #, /, \\)"
+            echo "❌ JWT_SECRET variable is empty or contains invalid characters (?, %, #, /, \\)."
             exit 1
           fi
           
           if ! jq -e 'type == "array"' <<< "$DOMAIN" ; then
-            echo "❌ DOMAIN must be a JSON array ([])."
+            echo "❌ DOMAIN variable must be a JSON array (e.g., [\"example.com\"])."
             exit 1
+          fi
+          
+          if [ -z "$ADMIN" ]; then
+            echo "❌ ADMIN variable cannot be empty."
+            exit 1
+          fi
+          
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "❌ CLOUDFLARE_ACCOUNT_ID variable cannot be empty."
+            exit 1
+          fi
+          
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "❌ CLOUDFLARE_API_TOKEN variable cannot be empty."
+            exit 1
+          fi
+          
+          if [ -z "$CUSTOM_DOMAIN" ]; then
+            echo "::error:: CUSTOM_DOMAIN variable is not set."
           fi
           
           CONFIG_FILE="wrangler-action.toml"
@@ -165,7 +184,11 @@ jobs:
           echo "🚀 Starting deployment..."
           pnpm wrangler deploy -c wrangler-action.toml | tee deploy.log | grep -v "https://.*\.workers\.dev" || true
           WORKER_URL=$(grep -o "https://.*\.workers\.dev" deploy.log || echo "")
-          echo "::add-mask::$WORKER_URL"
+          
+          if [ -n "$WORKER_URL" ]; then
+            echo "::add-mask::$WORKER_URL"
+          fi
+          
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
           echo "✅ Setup completed."
 
@@ -174,10 +197,11 @@ jobs:
           echo "🛠️ Starting database initialization..."
           sleep 15
           
-          WORKER_URL="${CUSTOM_DOMAIN:-${{ steps.deploy.outputs.worker_url }}}"
+          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
+          WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
           
           if [ -z "$WORKER_URL" ]; then
-            echo "❌ No URL available."
+            echo "❌ Preview URL not available. Please set CUSTOM_DOMAIN."
             exit 1
           fi
           
@@ -196,7 +220,8 @@ jobs:
 
           echo "🛠️ Starting email receiving setup..."
           
-          WORKER_URL="${CUSTOM_DOMAIN:-${{ steps.deploy.outputs.worker_url }}}"
+          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
+          WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
 
           HTTP_CODE=$(curl -sL --post301 --post302 --post303 -w "%{http_code}" -o response.txt \
             -X POST \
@@ -208,12 +233,15 @@ jobs:
 
           if [ "$RESPONSE_BODY" = "success" ]; then
             echo "✅ Setup completed."
-          else
-            echo "::error:: Email receiving setup failed."
-            echo "HTTP status: $HTTP_CODE. Response:" 
-            echo "$RESPONSE_BODY" | jq . 2>/dev/null || echo "$RESPONSE_BODY"
             exit 0
           fi
+          
+          if [ "$HTTP_CODE" = "200" ] && [ "$RESPONSE_BODY" != "success" ]; then
+            echo "::error:: Email receiving setup failed: $RESPONSE_BODY"
+            exit 0
+          fi
+          
+          echo "::error:: Email receiving setup failed: $HTTP_CODE $RESPONSE_BODY" 
 
       - name: 🗑️ 删除运行记录 / Delete workflow runs
         uses: GitRML/delete-workflow-runs@main
