@@ -38,6 +38,8 @@
             :preserve-expanded-content="preserveExpanded"
             style="width: 100%;"
             ref="tableRef"
+            @cell-contextmenu="handleContextmenu"
+            :cell-class-name="cellClassName"
         >
           <el-table-column :width="expandWidth" type="selection" :selectable="row => row.type !== 0" />
           <el-table-column show-overflow-tooltip :tooltip-formatter="tableRowFormatter" :label="$t('tabEmailAddress')"
@@ -81,20 +83,21 @@
           </el-table-column>
           <el-table-column :label="$t('tabSetting')" :width="settingWidth">
             <template #default="props">
-              <el-dropdown>
+              <el-button size="small" type="primary" v-if="(props.row.type === 0 && userStore.user.type !== 0)" >{{ $t('action') }}</el-button>
+              <el-dropdown v-else >
                 <el-button size="small" type="primary">{{ $t('action') }}</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item @click="openSetPwd(props.row)" v-if="(props.row.type !== 0 || userStore.user.type === 0)">{{ $t('chgPwd') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openSetType(props.row)">{{ $t('perm') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openSetPwd(props.row)" >{{ $t('chgPwd') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openSetType(props.row)" >{{ $t('perm') }}</el-dropdown-item>
                     <template v-if="props.row.type !== 0">
                       <el-dropdown-item v-if="props.row.isDel !== 1" @click="setStatus(props.row)">
                         {{ setStatusName(props.row) }}
                       </el-dropdown-item>
                       <el-dropdown-item v-else @click="restore(props.row)">{{ $t('restore') }}</el-dropdown-item>
                     </template>
-                    <el-dropdown-item @click="openAccountList(props.row.userId)" v-if="(props.row.type !== 0 || userStore.user.type === 0)" >{{ $t('account') }}</el-dropdown-item>
-                    <el-dropdown-item @click="openDetails(props.row)" v-if="(props.row.type !== 0 || userStore.user.type === 0)" >{{ $t('details') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openAccountList(props.row.userId)" >{{ $t('account') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openDetails(props.row)" >{{ $t('details') }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -286,6 +289,78 @@
         </div>
       </div>
     </el-dialog>
+    <el-dropdown
+        :show-timeout="0"
+        :hide-timeout="0"
+        ref="dropdownRef"
+        @visible-change="visibleChange"
+        :virtual-ref="triggerRef"
+        :show-arrow="false"
+        :popper-options="{
+      modifiers: [{ name: 'offset', options: { offset: [0, 0] } }],
+    }"
+        virtual-triggering
+        trigger="contextmenu"
+        placement="bottom-start"
+    >
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item @click="openSetPwd(rightClickUser)">
+            <template #default>
+              <div class="right-dropdown-item">
+                <icon icon="fluent:fingerprint-20-filled" width="22" height="22" />
+                <span>{{t('changePassword')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item @click="openSetType(rightClickUser)">
+            <template #default>
+              <div class="right-dropdown-item">
+                <icon icon="fluent:lock-closed-16-regular" width="21" height="21" />
+                <span>{{ t('setRole') }}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="rightClickUser.type !== 0">
+            <template #default>
+              <div class="right-dropdown-item" v-if="rightClickUser.isDel !== 1" @click="setStatus(rightClickUser)" >
+                <Icon icon="ion:reload" v-if="rightClickUser.status" style="margin-left: 1px;margin-right: 1px" width="19" height="19" />
+                <Icon icon="ion:ban-outline" v-else style="margin-left: 1px;margin-right: 1px" width="19" height="19" />
+                <span>{{ setRightStatusName(rightClickUser) }}</span>
+              </div>
+              <div class="right-dropdown-item" v-else @click="restore(rightClickUser)">
+                <Icon icon="ion:reload" style="margin-left: 1px;margin-right: 1px" width="19" height="19" />
+                <span>{{ t('restoreUser') }}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item @click="openAccountList(rightClickUser.userId)" >
+            <template #default>
+              <div class="right-dropdown-item" >
+                <Icon icon="hugeicons:mailbox-01" width="20" height="20" />
+                <span>{{ t('userEmail') }}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item @click="openDetails(rightClickUser)" >
+            <template #default>
+              <div class="right-dropdown-item" >
+                <Icon icon="si:user-alt-2-line" width="20" height="20" />
+                <span>{{ t('userDetails') }}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="rightClickUser.type !== 0" @click="delOneUser(rightClickUser)" >
+            <template #default>
+              <div class="right-dropdown-item" >
+                <Icon icon="uiw:delete" width="18" height="18" style="margin-left: 1px;margin-right: 1px" />
+                <span>{{ t('adminDeleteUser') }}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
   </div>
 </template>
 
@@ -344,7 +419,21 @@ const total = ref(0)
 const first = ref(true)
 const scrollbarRef = ref(null)
 const accountLoading = ref(false)
+const dropdownRef = ref(null);
+const dropdownShow = ref(false);
+const rightClickUser = ref({});
+const position = ref(
+    DOMRect.fromRect({
+      x: 0,
+      y: 0,
+    })
+)
 
+const triggerRef = ref({
+  getBoundingClientRect() {
+    return position.value;
+  }
+})
 const domainList = settingStore.domainList
 
 const addForm = reactive({
@@ -424,6 +513,43 @@ const filterItem = reactive({
   account: ['normal', 'del'],
   receive: ['normal', 'del']
 })
+
+window.addEventListener('wheel', (event) => {
+  if (dropdownShow.value) {
+    dropdownRef.value.handleClose();
+  }
+})
+
+function visibleChange(e) {
+  dropdownShow.value = e;
+  if (!e) {
+    rightClickUser.value.checkedClass = '';
+  }
+}
+
+function cellClassName({ row }) {
+  return row.checkedClass;
+}
+
+const handleContextmenu = (row, column, cell, event) => {
+
+  if (row.type === 0 && userStore.user.type !== 0) {
+    return
+  }
+
+  rightClickUser.value.checkedClass = '';
+
+  const { clientX, clientY } = event
+  position.value = DOMRect.fromRect({
+    x: clientX,
+    y: clientY,
+  })
+  event.preventDefault()
+  dropdownRef.value?.handleOpen()
+
+  row.checkedClass = 'checked-row';
+  rightClickUser.value = row;
+}
 
 function deleteAccount(account) {
   ElMessageBox.confirm(t('delConfirm', {msg: account.email}), {
@@ -538,6 +664,12 @@ function setStatusName(user) {
   if (user.isDel === 1) return t('restore')
   if (user.status === 0) return t('btnBan')
   if (user.status === 1) return t('enable')
+}
+
+function setRightStatusName(user) {
+  if (user.isDel === 1) return t('adminDeleteUser')
+  if (user.status === 0) return t('banUser')
+  if (user.status === 1) return t('enableUser')
 }
 
 const tableRowFormatter = (data) => {
@@ -683,12 +815,29 @@ function delUser(user) {
   if (userIds.length === 0) {
     return;
   }
-  ElMessageBox.confirm(t('delConfirm', {msg: user.email}), {
+  ElMessageBox.confirm(t('delUsersConfirm'), {
     confirmButtonText: t('confirm'),
     cancelButtonText: t('cancel'),
     type: 'warning'
   }).then(() => {
     userDelete(userIds).then(() => {
+      ElMessage({
+        message: t('delSuccessMsg'),
+        type: "success",
+        plain: true
+      })
+      getUserList(true)
+    })
+  });
+}
+
+function delOneUser(user) {
+  ElMessageBox.confirm(t('delConfirm', {msg: user.email}), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    userDelete([user.userId]).then(() => {
       ElMessage({
         message: t('delSuccessMsg'),
         type: "success",
@@ -707,14 +856,14 @@ function restore(user) {
     confirmButtonText: t('confirm'),
     cancelButtonText: t('cancel'),
     message: () => h('div', [
-      h('div', {class: 'mb-2'}, t('restoreConfirm', {msg: user.email})),
-      h(ElRadioGroup, {
-        modelValue: type.value,
-        'onUpdate:modelValue': (val) => (type.value = val),
-      }, [
-        h(ElRadio, {label: 'option1', value: 0}, t('normalRestore')),
-        h(ElRadio, {label: 'option2', value: 1}, t('allRestore')),
-      ])
+      h('div', {class: 'mb-2'}, t('restoreConfirm', {msg: user.email}))
+      // h(ElRadioGroup, {
+      //   modelValue: type.value,
+      //   'onUpdate:modelValue': (val) => (type.value = val),
+      // }, [
+      //   h(ElRadio, {label: 'option1', value: 0}, t('normalRestore')),
+      //   h(ElRadio, {label: 'option2', value: 1}, t('allRestore')),
+      // ])
     ]),
     type: 'warning'
   }).then(() => {
@@ -730,18 +879,7 @@ function restore(user) {
 }
 
 function setStatus(user) {
-
-  if (user.status === 0) {
-    ElMessageBox.confirm(t('banRestore', {msg: user.email}), {
-      confirmButtonText: t('confirm'),
-      cancelButtonText: t('cancel'),
-      type: 'warning'
-    }).then(() => {
-      httpSetStatus(user)
-    });
-  } else {
-    httpSetStatus(user)
-  }
+  httpSetStatus(user);
 }
 
 function httpSetStatus(user) {
@@ -866,7 +1004,7 @@ function getUserList(loading = true) {
     newParams.isDel = 1
   }
   userList(newParams).then(data => {
-    users.value = data.list
+    users.value = data.list.map(item => ({...item, checkedClass: ''}))
     total.value = data.total
     scrollbarRef.value?.setScrollTop(0);
   }).finally(() => {
@@ -916,6 +1054,10 @@ function adjustWidth() {
 }
 </style>
 <style lang="scss" scoped>
+
+:deep(.el-table .checked-row) {
+  background: var(--el-color-warning-light-9);
+}
 
 .user-box {
   overflow: hidden;
@@ -994,7 +1136,7 @@ function adjustWidth() {
 }
 
 .details {
-  padding: 10px 10px 10px 10px;
+  padding: 0 10px 10px 10px;
   display: grid;
   gap: 10px;
   .details-item-title {
@@ -1093,6 +1235,10 @@ function adjustWidth() {
   top: 6px;
 }
 
+.right-dropdown-item {
+  display: flex;
+  gap: 10px;
+}
 
 .btn {
   width: 100%;

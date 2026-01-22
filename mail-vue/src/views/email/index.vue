@@ -133,7 +133,7 @@ async function latest() {
 
         }
       } catch (e) {
-        if (e.code === 401) {
+        if (e.code === 401 || e.code === 403) {
           settingStore.settings.autoRefresh = AutoRefreshEnum.DISABLED;
         }
         console.error(e)

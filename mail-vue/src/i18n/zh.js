@@ -207,6 +207,7 @@ const zh = {
     emptyCountMsg: '可用次数不能为空',
     addSuccessMsg: '添加成功',
     delConfirm: '确认删除{msg}吗?',
+    delUsersConfirm: '确定删除选中的用户吗？',
     emptyRoleNameMsg: '身份名不能为空',
     saveSuccessMsg: '保存成功',
     changeRoleTitle: '修改身份',
@@ -237,7 +238,8 @@ const zh = {
     sendSuccessMsg: '发送成功',
     sendFailMsg: '发送失败',
     saveDraftConfirm: '是否保存草稿？',
-    delEmailsConfirm: '确认批量删除这些邮件吗？',
+    delEmailsConfirm: '确认删除选中的邮件吗？',
+    delOneEmailConfirm: '确认删除这个邮件吗？',
     sending: '邮件正在发送中',
     sendingErrorMsg: '邮件正在发送中',
     networkErrorMsg: '网络错误，请检查网络连接',
@@ -312,6 +314,17 @@ const zh = {
     mustNotContainDesc: '输入多个值用,分开',
     setSuccess: '设置成功',
     details: '详情',
-    userDetails: '用户详情'
+    userDetails: '用户详情',
+    markAsRead: '标为已读',
+    star: '星标',
+    setRole: '设置权限',
+    adminDeleteUser: '删除用户',
+    banUser: '封禁用户',
+    enableUser: '启动用户',
+    restoreUser: '恢复用户',
+    searchUser: '搜索用户',
+    searchEmail: '搜索邮箱',
+    searchSender: '搜索发件人',
+    userEmail: '用户邮箱'
 }
 export default zh
