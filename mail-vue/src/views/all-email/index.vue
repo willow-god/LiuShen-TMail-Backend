@@ -204,7 +204,7 @@ function batchDelete() {
   }
 
   ElMessageBox.confirm(
-      t('delAllEmailConfirm'),
+      t('delAllConfirm'),
       {
         confirmButtonText: t('confirm'),
         cancelButtonText: t('cancel'),

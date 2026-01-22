@@ -292,7 +292,8 @@ const zh = {
     to: '至',
     clear: '清除',
     include: '包含',
-    delAllEmailConfirm: '确定要删除吗？',
+    delAllConfirm: '确定要删除吗？',
+    pin: '置顶',
     s3Configuration: 'S3 配置',
     confirmDeletionOfContacts: '确认清除这些联系人吗？',
     recentContacts: '最近联系人',
@@ -309,6 +310,8 @@ const zh = {
     character: '位',
     mustNotContain: '禁止包含',
     mustNotContainDesc: '输入多个值用,分开',
-    setSuccess: '设置成功'
+    setSuccess: '设置成功',
+    details: '详情',
+    userDetails: '用户详情'
 }
 export default zh

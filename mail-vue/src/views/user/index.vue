@@ -23,7 +23,7 @@
       <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else width="28"
             height="28"/>
       <Icon class="icon" icon="ion:reload" width="18" height="18" @click="refresh"/>
-      <Icon class="icon" icon="pepicons-pencil:expand" width="26" height="26" @click="changeExpand"/>
+      <Icon class="icon" icon="uiw:delete" width="16" height="16" @click="delUser"/>
     </div>
     <el-scrollbar ref="scrollbarRef" class="scrollbar">
       <div>
@@ -34,78 +34,12 @@
         <el-table
             @filter-change="tableFilter"
             :empty-text="first ? '' : null"
-            :default-expand-all="expandStatus"
             :data="users"
             :preserve-expanded-content="preserveExpanded"
             style="width: 100%;"
-            :key="key"
+            ref="tableRef"
         >
-          <el-table-column :width="expandWidth" type="expand">
-            <template #default="props">
-              <div class="details">
-                <div v-if="props.row.username"><span class="details-item-title">LinuxDo:</span>
-                  <el-avatar :src="props.row.avatar" :size="30" class="linuxdo-avatar"  />
-                  <span style="margin: 0 10px">用户名：{{props.row.username}}</span>
-                  <span>
-                    等级：<el-tag type="success">{{props.row.trustLevel}}</el-tag>
-                  </span>
-                </div>
-                <div v-if="!sendNumShow"><span
-                    class="details-item-title">{{ $t('tabSent') }}:</span>{{ props.row.sendEmailCount }}
-                </div>
-                <div v-if="!accountNumShow"><span class="details-item-title">{{ $t('tabMailboxes') }}:</span>{{
-                    props.row.accountCount
-                  }}
-                </div>
-                <div v-if="!createTimeShow"><span class="details-item-title">{{ $t('tabRegisteredAt') }}:</span>{{
-                    tzDayjs(props.row.createTime).format('YYYY-MM-DD HH:mm')
-                  }}
-                </div>
-                <div v-if="!typeShow"><span class="details-item-title">{{ $t('perm') }}:</span>
-                  {{ toRoleName(props.row.type) }}
-                </div>
-                <div v-if="!statusShow">
-                  <span class="details-item-title">{{ $t('tabStatus') }}:</span>
-                  <el-tag disable-transitions v-if="props.row.isDel === 1" type="info">{{ $t('deleted') }}</el-tag>
-                  <el-tag disable-transitions v-else-if="props.row.status === 0" type="primary">{{ $t('active') }}
-                  </el-tag>
-                  <el-tag disable-transitions v-else-if="props.row.status === 1" type="danger">{{ $t('banned') }}
-                  </el-tag>
-                </div>
-                <div><span class="details-item-title">{{ $t('registrationIp') }}:</span>{{
-                    props.row.createIp || $t('unknown')
-                  }}
-                </div>
-                <div><span class="details-item-title">{{ $t('recentIP') }}:</span>{{
-                    props.row.activeIp || $t('unknown')
-                  }}
-                </div>
-                <div><span class="details-item-title">{{ $t('recentActivity') }}:</span>{{
-                    props.row.activeTime ? tzDayjs(props.row.activeTime).format('YYYY-MM-DD') : $t('unknown')
-                  }}
-                </div>
-                <div><span
-                    class="details-item-title">{{ $t('loginDevice') }}:</span>{{ props.row.device || $t('unknown') }}
-                </div>
-                <div><span class="details-item-title">{{ $t('loginSystem') }}:</span>{{ props.row.os || $t('unknown') }}
-                </div>
-                <div><span
-                    class="details-item-title">{{ $t('browserLogin') }}:</span>{{ props.row.browser || $t('unknown') }}
-                </div>
-                <div>
-                  <span class="details-item-title">{{ $t('sendEmail') }}:</span>
-                  <span>{{ formatSendCount(props.row) }}</span>
-                  <el-tag style="margin-left: 10px" v-if="props.row.sendAction.hasPerm">
-                    {{ formatSendType(props.row) }}
-                  </el-tag>
-                  <el-button size="small" style="margin-left: 10px"
-                             v-if="props.row.sendAction.hasPerm && props.row.sendAction.sendCount"
-                             @click="resetSendCount(props.row)" type="primary">{{ $t('reset') }}
-                  </el-button>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
+          <el-table-column :width="expandWidth" type="selection" :selectable="row => row.type !== 0" />
           <el-table-column show-overflow-tooltip :tooltip-formatter="tableRowFormatter" :label="$t('tabEmailAddress')"
                            :min-width="emailWidth">
             <template #default="props">
@@ -147,11 +81,11 @@
           </el-table-column>
           <el-table-column :label="$t('tabSetting')" :width="settingWidth">
             <template #default="props">
-              <el-dropdown trigger="click">
+              <el-dropdown>
                 <el-button size="small" type="primary">{{ $t('action') }}</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item @click="openSetPwd(props.row)">{{ $t('chgPwd') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openSetPwd(props.row)" v-if="(props.row.type !== 0 || userStore.user.type === 0)">{{ $t('chgPwd') }}</el-dropdown-item>
                     <el-dropdown-item @click="openSetType(props.row)">{{ $t('perm') }}</el-dropdown-item>
                     <template v-if="props.row.type !== 0">
                       <el-dropdown-item v-if="props.row.isDel !== 1" @click="setStatus(props.row)">
@@ -159,8 +93,8 @@
                       </el-dropdown-item>
                       <el-dropdown-item v-else @click="restore(props.row)">{{ $t('restore') }}</el-dropdown-item>
                     </template>
-                    <el-dropdown-item @click="openAccountList(props.row.userId)">{{ $t('account') }}</el-dropdown-item>
-                    <el-dropdown-item @click="delUser(props.row)" v-if="props.row.type !== 0">{{ $t('delete') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openAccountList(props.row.userId)" v-if="(props.row.type !== 0 || userStore.user.type === 0)" >{{ $t('account') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openDetails(props.row)" v-if="(props.row.type !== 0 || userStore.user.type === 0)" >{{ $t('details') }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -288,6 +222,70 @@
         />
       </div>
     </el-dialog>
+    <el-dialog class="account-dialog" v-model="detailsShow" :title="t('userDetails')"  >
+      <div class="details">
+        <div v-if="userDetails.username"><span class="details-item-title">LinuxDo:</span>
+          <el-avatar :src="userDetails.avatar" :size="30" class="linuxdo-avatar"  />
+          <span style="margin: 0 10px">用户名：{{userDetails.username}}</span>
+          <span>
+                    等级：<el-tag type="success">{{userDetails.trustLevel}}</el-tag>
+                  </span>
+        </div>
+        <div v-if="!sendNumShow"><span
+            class="details-item-title">{{ $t('tabSent') }}:</span>{{ userDetails.sendEmailCount }}
+        </div>
+        <div v-if="!accountNumShow"><span class="details-item-title">{{ $t('tabMailboxes') }}:</span>{{
+            userDetails.accountCount
+          }}
+        </div>
+        <div v-if="!createTimeShow"><span class="details-item-title">{{ $t('tabRegisteredAt') }}:</span>{{
+            tzDayjs(userDetails.createTime).format('YYYY-MM-DD HH:mm')
+          }}
+        </div>
+        <div v-if="!typeShow"><span class="details-item-title">{{ $t('perm') }}:</span>
+          {{ toRoleName(userDetails.type) }}
+        </div>
+        <div v-if="!statusShow">
+          <span class="details-item-title">{{ $t('tabStatus') }}:</span>
+          <el-tag disable-transitions v-if="userDetails.isDel === 1" type="info">{{ $t('deleted') }}</el-tag>
+          <el-tag disable-transitions v-else-if="userDetails.status === 0" type="primary">{{ $t('active') }}
+          </el-tag>
+          <el-tag disable-transitions v-else-if="userDetails.status === 1" type="danger">{{ $t('banned') }}
+          </el-tag>
+        </div>
+        <div><span class="details-item-title">{{ $t('registrationIp') }}:</span>{{
+            userDetails.createIp || $t('unknown')
+          }}
+        </div>
+        <div><span class="details-item-title">{{ $t('recentIP') }}:</span>{{
+            userDetails.activeIp || $t('unknown')
+          }}
+        </div>
+        <div><span class="details-item-title">{{ $t('recentActivity') }}:</span>{{
+            userDetails.activeTime ? tzDayjs(userDetails.activeTime).format('YYYY-MM-DD') : $t('unknown')
+          }}
+        </div>
+        <div><span
+            class="details-item-title">{{ $t('loginDevice') }}:</span>{{ userDetails.device || $t('unknown') }}
+        </div>
+        <div><span class="details-item-title">{{ $t('loginSystem') }}:</span>{{ userDetails.os || $t('unknown') }}
+        </div>
+        <div><span
+            class="details-item-title">{{ $t('browserLogin') }}:</span>{{ userDetails.browser || $t('unknown') }}
+        </div>
+        <div>
+          <span class="details-item-title">{{ $t('sendEmail') }}:</span>
+          <span>{{ formatSendCount(userDetails) }}</span>
+          <el-tag style="margin-left: 10px" v-if="userDetails.sendAction.hasPerm">
+            {{ formatSendType(userDetails) }}
+          </el-tag>
+          <el-button size="small" style="margin-left: 10px"
+                     v-if="userDetails.sendAction.hasPerm && userDetails.sendAction.sendCount"
+                     @click="resetSendCount(userDetails)" type="primary">{{ $t('reset') }}
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -336,10 +334,12 @@ const statusShow = ref(true)
 const typeShow = ref(true)
 const receiveWidth = ref(null)
 const phonePageShow = ref(false)
+const detailsShow = ref(false);
 const layout = ref('prev, pager, next,  sizes, total')
 const pageSize = ref('')
-const expandStatus = ref(false)
 const users = ref([])
+const tableRef = ref({})
+const userDetails = ref({})
 const total = ref(0)
 const first = ref(true)
 const scrollbarRef = ref(null)
@@ -378,7 +378,6 @@ const settingLoading = ref(false)
 const tableLoading = ref(true)
 const roleList = reactive([])
 const mySelect = ref({})
-const key = ref(0)
 const accountList = reactive([])
 const accountParams = reactive({
   size: 10,
@@ -460,6 +459,11 @@ function openAccountList(userId) {
   accountShow.value = true
 }
 
+function openDetails(user) {
+  userDetails.value = user;
+  detailsShow.value = true;
+}
+
 function getAccountList(loading = false) {
   accountLoading.value = loading
   userAllAccount(accountParams.userId,accountParams.num, accountParams.size).then(({list,total}) => {
@@ -538,11 +542,6 @@ function setStatusName(user) {
 
 const tableRowFormatter = (data) => {
   return data.row.email
-}
-
-function changeExpand() {
-  expandStatus.value = !expandStatus.value
-  key.value++
 }
 
 const openSelect = () => {
@@ -679,18 +678,23 @@ function resetSendCount(user) {
 }
 
 function delUser(user) {
+  const rows = tableRef.value.getSelectionRows();
+  const userIds = rows.map(row => row.userId);
+  if (userIds.length === 0) {
+    return;
+  }
   ElMessageBox.confirm(t('delConfirm', {msg: user.email}), {
     confirmButtonText: t('confirm'),
     cancelButtonText: t('cancel'),
     type: 'warning'
   }).then(() => {
-    userDelete(user.userId).then(() => {
+    userDelete(userIds).then(() => {
       ElMessage({
         message: t('delSuccessMsg'),
         type: "success",
         plain: true
       })
-      getUserList(false)
+      getUserList(true)
     })
   });
 }
@@ -888,7 +892,7 @@ function adjustWidth() {
   typeShow.value = width > 767
   emailWidth.value = width > 480 ? 230 : null
   settingWidth.value = width < 480 ? (locale.value === 'en' ? 85 : 75) : null
-  expandWidth.value = width < 480 ? 25 : 40
+  expandWidth.value = width < 480 ? 30 : 35
   pagerCount.value = width < 768 ? 7 : 11
   receiveWidth.value = width < 480 ? 90 : null
   layout.value = width < 768 ? 'pager' : 'prev, pager, next,sizes, total'
@@ -990,13 +994,9 @@ function adjustWidth() {
 }
 
 .details {
-  padding: 15px 15px 15px 52px;
+  padding: 10px 10px 10px 10px;
   display: grid;
   gap: 10px;
-  @media (max-width: 767px) {
-    padding-left: 35px;
-  }
-
   .details-item-title {
     white-space: pre;
     color: #909399;

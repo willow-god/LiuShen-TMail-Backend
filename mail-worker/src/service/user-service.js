@@ -42,10 +42,12 @@ const userService = {
 		user.account = account;
 		user.name = account.name;
 		user.permKeys = permKeys;
-		user.role = roleRow
+		user.role = roleRow;
+		user.type = userRow.type;
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE
+			user.type = 0;
 		}
 
 		return user;
@@ -98,11 +100,11 @@ const userService = {
 	},
 
 	async physicsDelete(c, params) {
-		const { userId } = params
-		await accountService.physicsDeleteByUserIds(c, [userId])
-		await oauthService.deleteByUserId(c, userId);
-		await orm(c).delete(user).where(eq(user.userId, userId)).run();
-		await c.env.kv.delete(kvConst.AUTH_INFO + userId);
+		let { userIds } = params;
+		userIds = userIds.split(',').map(Number);
+		await accountService.physicsDeleteByUserIds(c, userIds);
+		await oauthService.deleteByUserIds(c, userIds);
+		await orm(c).delete(user).where(inArray(user.userId, userIds)).run();
 	},
 
 	async list(c, params) {

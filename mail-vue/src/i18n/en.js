@@ -292,7 +292,8 @@ const en = {
     to: 'To',
     clear: 'Clear',
     include: 'Include',
-    delAllEmailConfirm: 'Do you really want to delete it?',
+    delAllConfirm: 'Do you really want to delete it?',
+    pin: 'Pin',
     s3Configuration: 'S3 Configuration',
     confirmDeletionOfContacts: 'Confirm clearing contacts?',
     recentContacts: 'Recent contacts',
@@ -309,7 +310,9 @@ const en = {
     character: '',
     mustNotContain: 'Must Not Contain',
     mustNotContainDesc: 'Separate with commas',
-    setSuccess: 'Settings saved successfully'
+    setSuccess: 'Settings saved successfully',
+    details: 'Details',
+    userDetails: 'User Details'
 }
 
 export default en

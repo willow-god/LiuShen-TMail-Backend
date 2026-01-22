@@ -494,7 +494,7 @@ function addItem(email) {
   const existIndex = emailList.findIndex(item => item.emailId === email.emailId)
 
   if (existIndex > -1) {
-    return
+    return false;
   }
 
   email.formatText = htmlToText(email);
@@ -511,7 +511,7 @@ function addItem(email) {
     }
 
     total.value++
-    return;
+    return true;
   }
 
 
@@ -532,6 +532,7 @@ function addItem(email) {
   }
 
   total.value++
+  return true;
 }
 
 function handleCheckAllChange(val) {
@@ -639,7 +640,10 @@ function handleList(list) {
       5: { icon: 'bi:send-arrow-up-fill',  color: '#FBBD08', content: t('delayed') },
       7: { icon: 'ic:round-mark-email-read', color: '#FBBD08', content: t('noRecipient') },
     };
-    if (email.isDel) email.isdelContent = t('selectDeleted');
+
+    if (email.isDel) {
+      email.isDelContent = t('selectDeleted');
+    }
     email.statusIcon = statusIconMap[email.status];
   })
 }
