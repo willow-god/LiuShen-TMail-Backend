@@ -89,7 +89,7 @@ jobs:
           fi
           
           if [ -z "$CUSTOM_DOMAIN" ]; then
-            echo "::error:: CUSTOM_DOMAIN variable is not set."
+            echo "::warning:: CUSTOM_DOMAIN variable is not set."
           fi
           
           CONFIG_FILE="wrangler-action.toml"
@@ -132,9 +132,18 @@ jobs:
           fi
           
           echo "🔍 Checking if the database exists..."
-          KV_LIST=$(pnpm wrangler kv namespace list)
           
-          if echo "$KV_LIST" | jq -e ".[] | select(.title == \"$NAME\")" > /dev/null; then
+          set +e
+            KV_LIST=$(pnpm wrangler kv namespace list 2>&1)
+            STATUS=$?
+          set -e
+          
+          if [ $STATUS -ne 0 ]; then
+            echo "$KV_LIST"
+            exit 1
+          fi
+                  
+          if echo "$KV_LIST" | jq -e ".[] | select(.title == \"$NAME\")" >/dev/null; then
             echo "✅ Database $NAME already exists."
             KV_ID=$(echo "$KV_LIST" | jq -r ".[] | select(.title == \"$NAME\") | .id")
             echo "KV_NAMESPACE_ID: $KV_ID"
@@ -161,9 +170,18 @@ jobs:
           fi
           
           echo "🔍 Checking if the database exists..."
-          DB_LIST=$(pnpm wrangler d1 list --json)
           
-          if echo "$DB_LIST" | jq -e ".[] | select(.name == \"$NAME\")" > /dev/null; then
+          set +e
+            DB_LIST=$(pnpm wrangler d1 list --json 2>&1)
+            STATUS=$?
+          set -e
+          
+          if [ $STATUS -ne 0 ]; then
+            echo "$DB_LIST"
+            exit 1
+          fi
+          
+          if echo "$DB_LIST" | jq -e ".[] | select(.name == \"$NAME\")" >/dev/null; then
             echo "✅ Database $NAME already exists."
             D1_ID=$(echo "$DB_LIST" | jq -r ".[] | select(.name == \"$NAME\") | .uuid")
             echo "D1_DATABASE_ID: $D1_ID"
@@ -182,7 +200,17 @@ jobs:
         working-directory: ./mail-worker
         run: |
           echo "🚀 Starting deployment..."
-          pnpm wrangler deploy -c wrangler-action.toml | tee deploy.log | grep -v "https://.*\.workers\.dev" || true
+          pnpm wrangler deploy -c wrangler-action.toml 2>&1 \
+            | tee deploy.log \
+            | grep -v "https://.*\.workers\.dev" \
+            | sed -E 's/env\.domain .*/env.domain (***)/' \
+            || true
+          
+          DEPLOY_EXIT_CODE=${PIPESTATUS[0]}
+          if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
+            exit 1
+          fi
+          
           WORKER_URL=$(grep -o "https://.*\.workers\.dev" deploy.log || echo "")
           
           if [ -n "$WORKER_URL" ]; then
@@ -214,34 +242,6 @@ jobs:
             echo "❌ Failed. HTTP: $HTTP_CODE, Response: $RESPONSE_BODY"
             exit 1
           fi
-
-      - name: 📮 设置邮件接收 / Set up email receiving
-        run: |
-
-          echo "🛠️ Starting email receiving setup..."
-          
-          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
-          WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
-
-          HTTP_CODE=$(curl -sL --post301 --post302 --post303 -w "%{http_code}" -o response.txt \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"domainList\": $DOMAIN,\"accountId\":\"$CLOUDFLARE_ACCOUNT_ID\",\"token\":\"$CLOUDFLARE_API_TOKEN\",\"workerName\":\"$NAME\"}" \
-            "$WORKER_URL/api/initForward")
-
-          RESPONSE_BODY=$(cat response.txt)
-
-          if [ "$RESPONSE_BODY" = "success" ]; then
-            echo "✅ Setup completed."
-            exit 0
-          fi
-          
-          if [ "$HTTP_CODE" = "200" ] && [ "$RESPONSE_BODY" != "success" ]; then
-            echo "::error:: Email receiving setup failed: $RESPONSE_BODY"
-            exit 0
-          fi
-          
-          echo "::error:: Email receiving setup failed: $HTTP_CODE $RESPONSE_BODY" 
 
       - name: 🗑️ 删除运行记录 / Delete workflow runs
         uses: GitRML/delete-workflow-runs@main

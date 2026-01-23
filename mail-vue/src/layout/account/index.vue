@@ -176,7 +176,7 @@ const addForm = reactive({
 })
 let skeletonRows = 10
 const queryParams = {
-  size: 10
+  size: 30
 }
 
 const mySelect = ref()
