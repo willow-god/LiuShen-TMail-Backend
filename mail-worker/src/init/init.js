@@ -27,8 +27,17 @@ const dbInit = {
 		await this.v2_6DB(c);
 		await this.v2_7DB(c);
 		await this.v2_8DB(c);
+		await this.v2_9DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v2_9DB(c) {
+		try {
+			await c.env.db.prepare(`UPDATE setting SET auto_refresh = 5 WHERE auto_refresh = 1;`).run();
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	async v2_8DB(c) {
@@ -44,8 +53,7 @@ const dbInit = {
 	async v2_7DB(c) {
 		try {
 			await c.env.db.batch([
-				c.env.db.prepare(`ALTER TABLE setting RENAME COLUMN auto_refresh_time TO auto_refresh;`),
-				c.env.db.prepare(`UPDATE setting SET auto_refresh = 1 WHERE auto_refresh != 0;`)
+				c.env.db.prepare(`ALTER TABLE setting RENAME COLUMN auto_refresh_time TO auto_refresh;`)
 			]);
 		} catch (e) {
 			console.warn(`跳过字段：${e.message}`);

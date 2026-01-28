@@ -829,7 +829,11 @@ const regKeyOptions = computed(() => [
 
 const authRefreshOptions = computed(() => [
   {label: t('disable'), value: 0},
-  {label: t('enable'), value: 1},
+  {label: '3s', value: 3},
+  {label: '5s', value: 5},
+  {label: '10s', value: 10},
+  {label: '15s', value: 15},
+  {label: '20s', value: 20},
 ])
 
 const tgChatId = ref([])

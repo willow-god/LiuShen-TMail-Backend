@@ -102,7 +102,6 @@ import {Icon} from "@iconify/vue";
 import router from "@/router/index.js";
 import {useI18n} from 'vue-i18n';
 import {toUtc} from "@/utils/day.js";
-import {AutoRefreshEnum} from "@/enums/setting-enum.js";
 import {sleep} from "@/utils/time-utils.js";
 import {useSettingStore} from "@/store/setting.js";
 import { useRoute } from 'vue-router'
@@ -297,11 +296,13 @@ async function latest() {
 
   while (true) {
 
-    await sleep(1000)
+    let autoRefresh = settingStore.settings.autoRefresh;
+
+    await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
 
     const latestId = sysEmailScroll.value.latestEmail?.emailId
 
-    if (settingStore.settings.autoRefresh === AutoRefreshEnum.DISABLED) {
+    if (autoRefresh < 2) {
       continue
     }
 
@@ -345,7 +346,7 @@ async function latest() {
 
     } catch (e) {
       if (e.code === 401 || e.code === 403) {
-        settingStore.settings.autoRefresh = AutoRefreshEnum.DISABLED;
+        settingStore.settings.autoRefresh = 0;
       }
       console.error(e)
     }

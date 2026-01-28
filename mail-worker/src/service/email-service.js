@@ -446,30 +446,22 @@ const emailService = {
 			allReceive = accountRow.allReceive;
 		}
 
-		let count = 0
-		let list = []
-
-		while ((count < 6) && list.length === 0) {
-			list = await orm(c).select({...email}).from(email)
-				.leftJoin(
-					account,
-					eq(account.accountId, email.accountId)
-				)
-				.where(
-					and(
-						gt(email.emailId, emailId),
-						eq(email.userId, userId),
-						eq(email.isDel, isDel.NORMAL),
-						eq(account.isDel, isDel.NORMAL),
-						allReceive ? eq(1,1) : eq(email.accountId, accountId),
-						eq(email.type, emailConst.type.RECEIVE)
-					))
-				.orderBy(desc(email.emailId))
-				.limit(20);
-
-			await sleep(5000);
-			count++
-		}
+		let list = await orm(c).select({...email}).from(email)
+			.leftJoin(
+				account,
+				eq(account.accountId, email.accountId)
+			)
+			.where(
+				and(
+					gt(email.emailId, emailId),
+					eq(email.userId, userId),
+					eq(email.isDel, isDel.NORMAL),
+					eq(account.isDel, isDel.NORMAL),
+					allReceive ? eq(1,1) : eq(email.accountId, accountId),
+					eq(email.type, emailConst.type.RECEIVE)
+				))
+			.orderBy(desc(email.emailId))
+			.limit(20);
 
 		await this.emailAddAtt(c, list);
 
@@ -630,24 +622,16 @@ const emailService = {
 
 		const { emailId } = params;
 
-		let count = 0
-		let list = []
-
-		while ((count < 6) && list.length === 0) {
-			list = await orm(c).select({...email, userEmail: user.email}).from(email)
-				.leftJoin(user, eq(email.userId, user.userId))
-				.where(
-					and(
-						gt(email.emailId, emailId),
-						eq(email.type, emailConst.type.RECEIVE),
-						ne(email.status, emailConst.status.SAVING)
-					))
-				.orderBy(desc(email.emailId))
-				.limit(20);
-
-			await sleep(5000);
-			count++
-		}
+		let list = await orm(c).select({...email, userEmail: user.email}).from(email)
+			.leftJoin(user, eq(email.userId, user.userId))
+			.where(
+				and(
+					gt(email.emailId, emailId),
+					eq(email.type, emailConst.type.RECEIVE),
+					ne(email.status, emailConst.status.SAVING)
+				))
+			.orderBy(desc(email.emailId))
+			.limit(20);
 
 		await this.emailAddAtt(c, list);
 
@@ -660,10 +644,10 @@ const emailService = {
 
 		if (emailIds.length > 0) {
 
-			const attsList = await attService.selectByEmailIds(c, emailIds);
+			const attList = await attService.selectByEmailIds(c, emailIds);
 
 			list.forEach(emailRow => {
-				const atts = attsList.filter(attsRow => attsRow.emailId === emailRow.emailId);
+				const atts = attList.filter(attRow => attRow.emailId === emailRow.emailId);
 				emailRow.attList = atts;
 			});
 		}
