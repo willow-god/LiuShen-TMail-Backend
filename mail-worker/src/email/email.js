@@ -9,7 +9,6 @@ import { emailConst, isDel, roleConst, settingConst } from '../const/entity-cons
 import emailUtils from '../utils/email-utils';
 import roleService from '../service/role-service';
 import verifyUtils from '../utils/verify-utils';
-import r2Service from '../service/r2-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 
@@ -56,7 +55,7 @@ export async function email(message, env, ctx) {
 		let userRow = {}
 
 		if (account) {
-			 userRow = await userService.selectById({ env: env }, account.userId);
+			 userRow = await userService.selectByIdIncludeDel({ env: env }, account.userId);
 		}
 
 		if (account && userRow.email !== env.admin) {
