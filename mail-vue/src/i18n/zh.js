@@ -183,7 +183,6 @@ const zh = {
     optional: '可选',
     subjectInputDesc: '请输入邮件主题',
     changeUserName: '修改用户名',
-    sendSeparately: '分别发送',
     send: '发送',
     reply: '回复',
     confirm: '确定',

@@ -15,7 +15,6 @@ const zh = {
 	noOsDomainSendAtt: '对象存储域名未配置不能发送附件',
 	noOsSendAtt: '对象存储未配置不能发送附件',
 	disabledSend: '邮件发送功能已停用',
-	noSeparateSend: '分别发送暂时不支持附件',
 	daySendLimit: '发送次数已到达每日限制',
 	totalSendLimit: '发送次数已到达限制',
 	daySendLack: '当日剩余发送次数不足',

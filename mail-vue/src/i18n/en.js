@@ -183,7 +183,6 @@ const en = {
     optional: 'Optional',
     subjectInputDesc: 'Please enter the email subject',
     changeUserName: 'Change Username',
-    sendSeparately: 'Separately',
     send: 'Send',
     reply: 'Reply',
     confirm: 'Confirm',

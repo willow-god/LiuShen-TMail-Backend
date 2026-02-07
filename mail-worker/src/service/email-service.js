@@ -19,7 +19,8 @@ import kvConst from '../const/kv-const';
 import { t } from '../i18n/i18n'
 import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
-import {sleep} from "../utils/time-utils";
+import { att } from '../entity/att';
+import telegramService from './telegram-service';
 
 const emailService = {
 
@@ -147,25 +148,26 @@ const emailService = {
 		return orm(c).insert(email).values({ ...params }).returning().get();
 	},
 
+	//邮件发送
 	async send(c, params, userId) {
 
 		let {
-			accountId,
-			name,
-			sendType,
-			emailId,
-			receiveEmail,
-			manyType,
-			text,
-			content,
-			subject,
-			attachments
+			accountId, //发送账号id
+			name, //发件人名字
+			sendType, //发件类型
+			emailId, //邮件id，如果是回复邮件会带
+			receiveEmail, //收件人邮箱
+			text, //邮件纯文本
+			content, //邮件内容
+			subject, //邮件标题
+			attachments //附件
 		} = params;
 
-		const { resendTokens, r2Domain, send } = await settingService.query(c);
+		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
 
 		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
 
+		//判断是否关闭发件功能
 		if (send === settingConst.send.CLOSE) {
 			throw new BizError(t('disabledSend'), 403);
 		}
@@ -173,10 +175,12 @@ const emailService = {
 		const userRow = await userService.selectById(c, userId);
 		const roleRow = await roleService.selectById(c, userRow.type);
 
+		//如果不是管理员，发送被禁用
 		if (c.env.admin !== userRow.email && roleRow.sendType === 'ban') {
 			throw new BizError(t('bannedSend'), 403);
 		}
 
+		//如果不是管理员，权限设置了发送次数
 		if (c.env.admin !== userRow.email && roleRow.sendCount) {
 
 			if (userRow.sendCount >= roleRow.sendCount) {
@@ -191,11 +195,6 @@ const emailService = {
 
 		}
 
-		if (attachments.length > 0 && manyType === 'divide') {
-			throw new BizError(t('noSeparateSend'));
-		}
-
-
 		const accountRow = await accountService.selectById(c, accountId);
 
 		if (!accountRow) {
@@ -207,21 +206,28 @@ const emailService = {
 		}
 
 		if (c.env.admin !== userRow.email) {
-
+			//用户没有这个域名的使用权限
 			if(!roleService.hasAvailDomainPerm(roleRow.availDomain, accountRow.email)) {
 				throw new BizError(t('noDomainPermSend'),403)
 			}
 
 		}
 
+		//判断接收方是不是全部为站内邮箱
+	  const allInternal = receiveEmail.every(email => {
+			const domain = '@' + emailUtils.getDomain(email);
+			return domainList.includes(domain);
+		});
+
 		const domain = emailUtils.getDomain(accountRow.email);
 		const resendToken = resendTokens[domain];
 
-		if (!resendToken) {
+		//如果接收方存在站外邮箱，又没有resend token
+		if (!resendToken && !allInternal) {
 			throw new BizError(t('noResendToken'));
 		}
 
-
+		//没有发件人名字自动截取
 		if (!name) {
 			name = emailUtils.getName(accountRow.email);
 		}
@@ -230,6 +236,7 @@ const emailService = {
 			messageId: null
 		};
 
+		//如果是回复邮件
 		if (sendType === 'reply') {
 
 			emailRow = await this.selectById(c, emailId);
@@ -240,37 +247,12 @@ const emailService = {
 
 		}
 
-		let resendResult = null;
+		let resendResult = {};
 
-		const resend = new Resend(resendToken);
+		//存在站外时邮箱全部由resend发送
+		if (!allInternal) {
 
-		//如果是分开发送
-		if (manyType === 'divide') {
-
-			let sendFormList = [];
-
-			receiveEmail.forEach(email => {
-				const sendForm = {
-					from: `${name} <${accountRow.email}>`,
-					to: [email],
-					subject: subject,
-					text: text,
-					html: html
-				};
-
-				if (sendType === 'reply') {
-					sendForm.headers = {
-						'in-reply-to': emailRow.messageId,
-						'references': emailRow.messageId
-					};
-				}
-
-				sendFormList.push(sendForm);
-			});
-
-			resendResult = await resend.batch.send(sendFormList);
-
-		} else {
+			const resend = new Resend(resendToken);
 
 			const sendForm = {
 				from: `${name} <${accountRow.email}>`,
@@ -304,6 +286,7 @@ const emailService = {
 		//把图片标签cid标签切换会通用url
 		html = this.imgReplace(html, imageDataList, r2Domain);
 
+		//封装数据保存到数据库
 		const emailData = {};
 		emailData.sendEmail = accountRow.email;
 		emailData.name = name;
@@ -311,72 +294,54 @@ const emailService = {
 		emailData.content = html;
 		emailData.text = text;
 		emailData.accountId = accountId;
+		emailData.status = emailConst.status.SENT;
 		emailData.type = emailConst.type.SEND;
 		emailData.userId = userId;
-		emailData.status = emailConst.status.SENT;
+		emailData.resendEmailId = data?.id;
 
-		const emailDataList = [];
+		const recipient = [];
 
-		if (manyType === 'divide') {
+		receiveEmail.forEach(item => {
+			recipient.push({ address: item, name: '' });
+		});
 
-			receiveEmail.forEach((item, index) => {
-				const emailDataItem = { ...emailData };
-				emailDataItem.resendEmailId = data.data[index].id;
-				emailDataItem.recipient = JSON.stringify([{ address: item, name: '' }]);
-				emailDataList.push(emailDataItem);
-			});
-
-		} else {
-
-			emailData.resendEmailId = data.id;
-
-			const recipient = [];
-
-			receiveEmail.forEach(item => {
-				recipient.push({ address: item, name: '' });
-			});
-
-			emailData.recipient = JSON.stringify(recipient);
-
-			emailDataList.push(emailData);
-		}
+		emailData.recipient = JSON.stringify(recipient);
 
 		if (sendType === 'reply') {
-			emailDataList.forEach(emailData => {
-				emailData.inReplyTo = emailRow.messageId;
-				emailData.relation = emailRow.messageId;
-			});
+			emailData.inReplyTo = emailRow.messageId;
+			emailData.relation = emailRow.messageId;
 		}
 
-
+		//如果权限有发送次数增加用户发送次数
 		if (roleRow.sendCount) {
 			await userService.incrUserSendCount(c, receiveEmail.length, userId);
 		}
 
-		const emailRowList = await Promise.all(
+		//保存到数据库并返回结果
+		const emailResult = await orm(c).insert(email).values(emailData).returning().get();
 
-			emailDataList.map(async (emailData) => {
-				const emailRow = await orm(c).insert(email).values(emailData).returning().get();
+		//保存内嵌附件
+		if (imageDataList.length > 0) {
+			await attService.saveArticleAtt(c, imageDataList, userId, accountId, emailResult.emailId);
+		}
 
-				if (imageDataList.length > 0) {
-					await attService.saveArticleAtt(c, imageDataList, userId, accountId, emailRow.emailId);
-				}
+		//保存普通附件
+		if (attachments?.length > 0) {
+			await attService.saveSendAtt(c, attachments, userId, accountId, emailResult.emailId);
+		}
 
-				if (attachments?.length > 0) {
-					await attService.saveSendAtt(c, attachments, userId, accountId, emailRow.emailId);
-				}
+		const attList = await attService.selectByEmailIds(c, [emailResult.emailId]);
+		emailResult.attList = attList;
 
-				const attsList = await attService.selectByEmailIds(c, [emailRow.emailId]);
-				emailRow.attList = attsList;
-
-				return emailRow;
-			})
-		);
+		//如果全是站内接收方，直接写入数据库
+		if (allInternal) {
+			await this.HandleOnSiteEmail(c, receiveEmail, emailResult, attList);
+		}
 
 		const dateStr = dayjs().format('YYYY-MM-DD');
-
 		let daySendTotal = await c.env.kv.get(kvConst.SEND_DAY_COUNT + dateStr);
 
+		//记录每天发件次数统计
 		if (!daySendTotal) {
 			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(receiveEmail.length), { expirationTtl: 60 * 60 * 24 });
 		} else  {
@@ -384,7 +349,117 @@ const emailService = {
 			await c.env.kv.put(kvConst.SEND_DAY_COUNT + dateStr, JSON.stringify(daySendTotal), { expirationTtl: 60 * 60 * 24 });
 		}
 
-		return emailRowList;
+		return [ emailResult ];
+	},
+
+	//处理站内邮件发送
+	async HandleOnSiteEmail(c, receiveEmail, sendEmailData, attList) {
+
+		const { noRecipient  } = await settingService.query(c);
+
+		//查询所有收件人账号信息
+		let accountList = await orm(c).select().from(account).where(inArray(account.email, receiveEmail)).all();
+
+		//查询所有收件人权限身份
+		const userIds = accountList.map(accountRow => accountRow.userId);
+		let roleList = await roleService.selectByUserIds(c, userIds);
+
+		//封装数据库准备保存到数据库
+		const emailDataList = [];
+
+		for (const email of receiveEmail) {
+
+			//把发件人邮件改成收件
+			const emailValues = {...sendEmailData}
+			emailValues.status = emailConst.status.RECEIVE;
+			emailValues.type = emailConst.type.RECEIVE;
+			emailValues.toEmail = email;
+			emailValues.toName = emailUtils.getName(email);
+			emailValues.emailId = null;
+
+			const accountRow = accountList.find(accountRow => accountRow.email === email);
+
+			//如果收件人存在就把邮件信息改成收件人的
+			if (accountRow) {
+
+				//设置给收件人保存
+				emailValues.userId = accountRow.userId;
+				emailValues.accountId = accountRow.accountId;
+				emailValues.type = emailConst.type.RECEIVE;
+				emailValues.status = emailConst.status.RECEIVE;
+
+				const roleRow = roleList.find(roleRow => roleRow.userId === accountRow.userId);
+
+				let { banEmail, availDomain } = roleRow;
+
+				//如果收件人没有这个域名的使用权限和有邮件拦截，就把邮件改为拒收状态
+				if (email !== c.env.admin) {
+
+					if (!roleService.hasAvailDomainPerm(availDomain, email)) {
+						emailValues.status = emailConst.status.BOUNCED;
+						emailValues.message = `The recipient <${email}> is not authorized to use this domain.`;
+					} else if(roleService.isBanEmail(banEmail, sendEmailData.sendEmail)) {
+						emailValues.status = emailConst.status.BOUNCED;
+						emailValues.message = `The recipient <${email}> is disabled from receiving emails.`;
+					}
+
+				}
+
+				emailDataList.push(emailValues);
+
+			} else {
+
+				//设置无收件人邮件信息
+				emailValues.userId = 0;
+				emailValues.accountId = 0;
+				emailValues.type = emailConst.type.RECEIVE;
+				emailValues.status = emailConst.status.NOONE;
+
+				//如果无人收件关闭改为拒收
+				if (noRecipient === settingConst.noRecipient.CLOSE) {
+					emailValues.status = emailConst.status.BOUNCED;
+					emailValues.message = `Recipient not found: <${email}>`;
+				}
+
+				emailDataList.push(emailValues);
+
+			}
+
+		}
+
+		//保存邮件
+		const receiveEmailList = emailDataList.filter(emailRow => emailRow.status === emailConst.status.RECEIVE || emailRow.status === emailConst.status.NOONE);
+
+		for (const emailData of receiveEmailList) {
+
+			const emailRow = await orm(c).insert(email).values(emailData).returning().get();
+
+			//设置附件保存
+			for (const attRow of attList) {
+				const attValues = {...attRow};
+				attValues.emailId = emailRow.emailId;
+				attValues.accountId = emailRow.accountId;
+				attValues.userId = emailRow.userId;
+				attValues.attId = null;
+				await orm(c).insert(att).values(attValues).run();
+			}
+
+		}
+
+		const bouncedEmail = emailDataList.find(emailRow => emailRow.status === emailConst.status.BOUNCED);
+
+
+		let status = emailConst.status.DELIVERED;
+		let message = ''
+		//如果有拒收邮件，就把发件人的邮件改成拒收
+		if (bouncedEmail) {
+			const messageJson = { message: bouncedEmail.message };
+			message = JSON.stringify(messageJson);
+			status = emailConst.status.BOUNCED;
+		}
+
+		await orm(c).update(email).set({ status: emailConst.status.DELIVERED, message: message }).where(eq(email.emailId, sendEmailData.emailId)).run();
+
 	},
 
 	imgReplace(content, cidAttList, r2domain) {

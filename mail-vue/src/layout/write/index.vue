@@ -15,8 +15,7 @@
         </div>
       </div>
       <div class="container">
-        <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail"
-                      :placeholder="ruleEmailsInputDesc">
+        <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" >
           <template #prefix>
             <div class="item-title" >{{ $t('recipient') }}</div>
             <el-select
@@ -37,18 +36,12 @@
             </el-select>
           </template>
           <template #suffix>
-            <div style="display: flex;">
+            <div style="display: flex;margin-right: 3px;">
               <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
             </div>
-            <span class="distribute" :class="form.manyType ? 'checked' : ''"
-                  @click.stop="checkDistribute">{{ $t('sendSeparately') }}</span>
           </template>
         </el-input-tag>
-        <el-input v-model="form.subject" :placeholder="$t('subjectInputDesc')">
-          <template #prefix>
-            <div class="item-title">{{ $t('subject') }}</div>
-          </template>
-        </el-input>
+        <el-input v-model="form.subject" :placeholder="t('subject')" />
         <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
         <div class="button-item">
           <div class="att-add" @click="chooseFile">
@@ -141,7 +134,6 @@ const contactsTabRef = ref({})
 const showContacts = ref(false)
 const mySelect = ref()
 let selectStatus = false
-const ruleEmailsInputDesc = ref(t('ruleEmailsInputDesc'))
 const backReply = reactive({
   receiveEmail: [],
   subject: '',
@@ -152,7 +144,6 @@ const form = reactive({
   sendEmail: '',
   receiveEmail: [],
   accountId: -1,
-  manyType: null,
   name: '',
   subject: '',
   content: '',
@@ -253,10 +244,6 @@ function addTagChange(val) {
     }
   })
   if (selectStatus && has) openSelect()
-}
-
-function checkDistribute() {
-  form.manyType = form.manyType ? null : 'divide'
 }
 
 function clearContent() {
@@ -447,7 +434,11 @@ function openReply(email) {
   email.subject = email.subject || ''
 
   form.receiveEmail.push(email.sendEmail)
-  form.subject = (email.subject.startsWith('Re:') || email.subject.startsWith('回复：')) ? email.subject : 'Re: ' + email.subject
+  form.subject = (
+      email.subject.startsWith('Re:') ||
+      email.subject.startsWith('Re：') ||
+      email.subject.startsWith('回复：') ||
+      email.subject.startsWith('回复:')) ? email.subject : 'Re:' + email.subject
   form.sendType = 'reply'
   form.emailId = email.emailId
 
@@ -650,21 +641,6 @@ function close() {
       display: grid;
       grid-template-rows: auto auto 1fr auto;
       gap: 15px;
-
-      .distribute {
-        color: var(--el-color-info);
-        background: var(--el-color-info-light-9);
-        border: var(--el-color-info-light-8);
-        border-radius: 4px;
-        font-size: 12px;
-        padding: 0 5px;
-      }
-
-      .distribute.checked {
-        background: var(--el-color-primary-light-9);
-        color: var(--el-color-primary) !important;
-        border-radius: 4px;
-      }
 
       .item-title {
       }

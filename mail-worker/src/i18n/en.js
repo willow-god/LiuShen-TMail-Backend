@@ -15,7 +15,6 @@ const en = {
 	noOsDomainSendAtt: 'Cannot send attachments: object storage domain not configured',
 	noOsSendAtt: 'Cannot send attachments: object storage not configured',
 	disabledSend: 'Email sending feature is disabled',
-	noSeparateSend: 'Attachments are not supported in separate sending',
 	daySendLimit: 'Daily send limit reached',
 	totalSendLimit: 'Total send limit reached',
 	daySendLack: 'Not enough remaining sends today',
