@@ -761,6 +761,7 @@ function formatSendType(user) {
   if (user.sendAction.sendType === 'day') return t('daily')
   if (user.sendAction.sendType === 'count') return t('total')
   if (user.sendAction.sendType === 'ban') return t('sendBanned')
+  if (user.sendAction.sendType === 'internal') return t('sendInternal')
 }
 
 function formatSendCount(user) {

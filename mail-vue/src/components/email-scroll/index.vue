@@ -152,7 +152,7 @@
     >
       <template #dropdown>
         <el-dropdown-menu>
-          <el-dropdown-item v-if="props.type === 'email'" @click="emailRead()" >
+          <el-dropdown-item v-if="['email'].includes(props.type)" @click="emailRead(rightClickEmail.emailId)" >
             <template #default>
               <div class="right-dropdown-item">
                 <Icon icon="fluent:mail-read-20-regular" width="20" height="20" />
@@ -160,11 +160,19 @@
               </div>
             </template>
           </el-dropdown-item>
-          <el-dropdown-item v-if="props.type === 'email'" @click="openReply(rightClickEmail)">
+          <el-dropdown-item v-if="['email','star'].includes(props.type)" @click="openReply(rightClickEmail)">
             <template #default>
               <div class="right-dropdown-item">
                 <Icon icon="la:reply" width="20" height="20"  />
                 <span>{{t('reply')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="['email','send', 'star'].includes(props.type)" @click="openForward(rightClickEmail)">
+            <template #default>
+              <div class="right-dropdown-item">
+                <Icon icon="iconoir:arrow-up-right" width="19" height="19"  />
+                <span>{{t('forward')}}</span>
               </div>
             </template>
           </el-dropdown-item>
@@ -471,6 +479,10 @@ function openReply(email) {
   uiStore.writerRef.openReply(email)
 }
 
+function openForward(email) {
+  uiStore.writerRef.openForward(email)
+}
+
 function visibleChange(e) {
   dropdownShow.value = e;
   dropdownCloseLock.value = true;
@@ -593,6 +605,15 @@ function changeAccountShow() {
 const handleRead = () => {
   const emailIds = getSelectedMailsIds();
   props.emailRead(emailIds);
+  localRead(emailIds);
+}
+
+function emailRead(emailId) {
+  props.emailRead([emailId])
+  localRead([emailId]);
+}
+
+function localRead(emailIds) {
   emailIds.forEach(emailId => {
     const index = emailList.findIndex(email => email.emailId === emailId);
     if (index > -1) {
@@ -600,11 +621,6 @@ const handleRead = () => {
       emailList[index].checked = false;
     }
   })
-}
-
-function emailRead() {
-  const emailIds = getSelectedMailsIds();
-  props.emailRead(emailIds)
 }
 
 function rightDelete(emailId) {

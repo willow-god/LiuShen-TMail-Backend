@@ -248,6 +248,7 @@ const zh = {
     language: '网站语言',
     totalUserAccount: '{msg} 个',
     sendBanned: '已禁用',
+    sendInternal: '仅站内',
     wrote: '来信',
     support: '捐助',
     supportDesc: '请我喝杯奶茶',

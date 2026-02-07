@@ -32,6 +32,7 @@
                   :key="item"
                   :label="item"
                   :value="item"
+                  style="color: #999896;"
               />
             </el-select>
           </template>
@@ -111,6 +112,7 @@ import db from "@/db/db.js";
 import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
+import {ElMessageBox} from "element-plus";
 
 defineExpose({
   open,
@@ -119,7 +121,7 @@ defineExpose({
   openDraft
 })
 
-const {t, locale} = useI18n()
+const {t} = useI18n()
 const writerStore = useWriterStore();
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
@@ -306,6 +308,10 @@ async function sendEmail() {
   }
 
   if (!form.content) {
+    form.content = editor.value.getContent();
+  }
+
+  if (!form.content) {
     ElMessage({
       message: t('emptyContentMsg'),
       type: 'error',
@@ -433,15 +439,12 @@ function openForward(email) {
 
   form.subject = email.subject
   form.sendType = 'forward'
-  form.emailId = email.emailId
 
   defValue.value = ''
 
   setTimeout(() => {
     defValue.value = `
-    <articl class="mceNonEditable" >
       ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`}
-    </article>
     `
     open()
 
@@ -466,7 +469,7 @@ function openReply(email) {
       email.subject.startsWith('Re:') ||
       email.subject.startsWith('Re：') ||
       email.subject.startsWith('回复：') ||
-      email.subject.startsWith('回复:')) ? email.subject : 'Re:' + email.subject
+      email.subject.startsWith('回复:')) ? email.subject : 'Re: ' + email.subject
   form.sendType = 'reply'
   form.emailId = email.emailId
 
@@ -542,6 +545,10 @@ function close() {
 
   if (selectStatus) openSelect();
 
+  if (!form.content) {
+    form.content = editor.value.getContent();
+  }
+
   if (form.draftId) {
     draftStore.setDraft = {...toRaw(form)}
     show.value = false
@@ -559,6 +566,9 @@ function close() {
     let subjectFlag = form.subject === backReply.subject
     let contentFlag = editor.value.getContent() === backReply.content
     let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
+    if (backReply.sendType === 'forward' && form.receiveEmail.length === 0) {
+      receiveFlag = true;
+    }
     if (subjectFlag && contentFlag && receiveFlag) {
       resetForm();
       close()
@@ -572,7 +582,7 @@ function close() {
     type: 'warning',
     distinguishCancelAndClose: true
   }).then(async () => {
-    const formData = {...toRaw(form)}
+    const formData = {...toRaw(form)};
     delete formData.draftId
     delete formData.attachments
     formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
@@ -580,7 +590,9 @@ function close() {
     db.value.att.add({draftId, attachments: toRaw(form.attachments)})
     draftStore.refreshList++
     show.value = false
-    resetForm()
+    await nextTick(() => {
+      resetForm()
+    })
   }).catch((action) => {
     if (action === 'cancel') {
       show.value = false
@@ -591,7 +603,18 @@ function close() {
 }
 
 </script>
+<style>
+.el-select-dropdown__list {
+  padding: 4px 4px !important;
+}
+.el-select-dropdown__item {
+  padding: 0 10px 0 10px;
+}
 
+.el-select-dropdown {
+  min-width: 0 !important;
+}
+</style>
 <style scoped lang="scss">
 .send {
   position: fixed;

@@ -322,7 +322,7 @@ const emailService = {
 		}
 
 		//如果权限有发送次数增加用户发送次数
-		if (roleRow.sendCount) {
+		if (roleRow.sendCount && roleRow.sendType !== 'internal') {
 			await userService.incrUserSendCount(c, receiveEmail.length, userId);
 		}
 
@@ -473,7 +473,7 @@ const emailService = {
 			status = emailConst.status.BOUNCED;
 		}
 
-		await orm(c).update(email).set({ status: emailConst.status.DELIVERED, message: message }).where(eq(email.emailId, sendEmailData.emailId)).run();
+		await orm(c).update(email).set({ status, message: message }).where(eq(email.emailId, sendEmailData.emailId)).run();
 
 	},
 
