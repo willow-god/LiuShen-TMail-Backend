@@ -175,9 +175,24 @@ const emailService = {
 		const userRow = await userService.selectById(c, userId);
 		const roleRow = await roleService.selectById(c, userRow.type);
 
-		//如果不是管理员，发送被禁用
-		if (c.env.admin !== userRow.email && roleRow.sendType === 'ban') {
-			throw new BizError(t('bannedSend'), 403);
+		//判断接收方是不是全部为站内邮箱
+		const allInternal = receiveEmail.every(email => {
+			const domain = '@' + emailUtils.getDomain(email);
+			return domainList.includes(domain);
+		});
+
+		if (c.env.admin !== userRow.email) {
+
+			//发件被禁用
+			if (roleRow.sendType === 'ban') {
+				throw new BizError(t('bannedSend'), 403);
+			}
+
+			//发件被禁用
+			if (roleRow.sendType === 'internal' && !allInternal) {
+				throw new BizError(t('onlyInternalSend'), 403);
+			}
+
 		}
 
 		//如果不是管理员，权限设置了发送次数
@@ -212,12 +227,6 @@ const emailService = {
 			}
 
 		}
-
-		//判断接收方是不是全部为站内邮箱
-	  const allInternal = receiveEmail.every(email => {
-			const domain = '@' + emailUtils.getDomain(email);
-			return domainList.includes(domain);
-		});
 
 		const domain = emailUtils.getDomain(accountRow.email);
 		const resendToken = resendTokens[domain];
