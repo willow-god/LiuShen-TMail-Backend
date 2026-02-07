@@ -1273,6 +1273,13 @@ function adjustWidth() {
   white-space: nowrap;
 }
 
+:deep(.el-table) {
+  @media (pointer: coarse) {
+    /* 触屏 */
+    user-select: none;
+  }
+}
+
 :deep(.el-table th.el-table__cell>.cell.highlight) {
   color: #909399;
 }

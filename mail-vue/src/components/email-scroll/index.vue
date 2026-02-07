@@ -949,6 +949,11 @@ function loadData() {
   @media (max-width: 1366px) {
     height: 83px;
   }
+
+  @media (pointer: coarse) {
+    /* 触屏 */
+    user-select: none;
+  }
   &.all-email {
     height: 65px;
     @media (max-width: 1366px) {

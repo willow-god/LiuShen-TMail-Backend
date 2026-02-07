@@ -61,6 +61,7 @@
           </div>
           <div>
             <el-button type="primary" @click="sendEmail" v-if="form.sendType === 'reply'">{{ $t('reply') }}</el-button>
+            <el-button type="primary" @click="sendEmail" v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</el-button>
             <el-button type="primary" @click="sendEmail" v-else>{{ $t('send') }}</el-button>
           </div>
         </div>
@@ -114,10 +115,11 @@ import router from "@/router/index.js";
 defineExpose({
   open,
   openReply,
+  openForward,
   openDraft
 })
 
-const {t} = useI18n()
+const {t, locale} = useI18n()
 const writerStore = useWriterStore();
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
@@ -207,7 +209,6 @@ function selectChange(value) {
 
 function selectStatusChange(status) {
   selectStatus = status
-  ruleEmailsInputDesc.value = status ? '' : ruleEmailsInputDesc.value = t('ruleEmailsInputDesc')
 }
 
 const openSelect = () => {
@@ -264,25 +265,23 @@ function delAtt(index) {
 function chooseFile() {
   const doc = document.createElement("input")
   doc.setAttribute("type", "file")
+  doc.multiple = true;
   doc.click()
   doc.onchange = async (e) => {
 
-    const file = e.target.files[0]
-    const size = file.size
-    const filename = file.name
-    const contentType = file.type
+    const fileList = e.target.files;
 
-    const TotalSize = form.attachments.reduce((acc, item) => acc + item.size, 0);
-    if ((TotalSize + size) > 29360128) {
-      ElMessage({
-        message: t('attLimitMsg'),
-        type: 'error',
-        plain: true,
-      })
-      return
+    for (const file of fileList) {
+
+      const size = file.size
+      const filename = file.name
+      const contentType = file.type
+
+      const content = await fileToBase64(file)
+      form.attachments.push({content, filename, size, contentType})
+
     }
-    const content = await fileToBase64(file)
-    form.attachments.push({content, filename, size, contentType})
+
   }
 }
 
@@ -427,6 +426,35 @@ function focusChange() {
   if (selectStatus) openSelect()
 }
 
+function openForward(email) {
+  resetForm();
+
+  email.subject = email.subject || ''
+
+  form.subject = email.subject
+  form.sendType = 'forward'
+  form.emailId = email.emailId
+
+  defValue.value = ''
+
+  setTimeout(() => {
+    defValue.value = `
+    <articl class="mceNonEditable" >
+      ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`}
+    </article>
+    `
+    open()
+
+    nextTick(() => {
+      backReply.content = editor.value.getContent()
+      backReply.subject = form.subject
+      backReply.receiveEmail = form.receiveEmail
+      backReply.sendType = form.sendType
+    })
+
+  });
+}
+
 function openReply(email) {
 
   resetForm();
@@ -527,7 +555,7 @@ function close() {
     return;
   }
 
-  if (backReply.sendType === 'reply') {
+  if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
     let subjectFlag = form.subject === backReply.subject
     let contentFlag = editor.value.getContent() === backReply.content
     let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]

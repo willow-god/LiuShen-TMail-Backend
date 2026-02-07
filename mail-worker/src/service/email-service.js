@@ -331,11 +331,17 @@ const emailService = {
 
 		//保存内嵌附件
 		if (imageDataList.length > 0) {
+			if (imageDataList.length > 10) {
+				throw new BizError(t('imageAttLimit'));
+			}
 			await attService.saveArticleAtt(c, imageDataList, userId, accountId, emailResult.emailId);
 		}
 
 		//保存普通附件
 		if (attachments?.length > 0) {
+			if (attachments.length > 10) {
+				throw new BizError(t('attLimit'));
+			}
 			await attService.saveSendAtt(c, attachments, userId, accountId, emailResult.emailId);
 		}
 

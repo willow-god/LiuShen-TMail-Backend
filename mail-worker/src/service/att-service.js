@@ -179,6 +179,7 @@ const attService = {
 				cacheControl: `max-age=259200`,
 				contentDisposition: `inline;filename=${attData.filename}`
 			});
+			delete attData.buff;
 		}
 
 		await orm(c).insert(att).values(attDataList).run();

@@ -23,6 +23,8 @@ const zh = {
 	noResendToken: 'resend密钥未配置',
 	sendEmailNotCurUser: '发件人邮箱非当前用户所有',
 	notExistEmailReply: '邮件不存在无法回复',
+	imageAttLimit: '图片不能超过10个',
+	attLimit: '附件不能超过10个',
 	pwdLengthLimit: '密码长度超出限制',
 	emailLengthLimit: '邮箱长度超出限制',
 	minEmailPrefix: '邮箱名至少{{msg}}位',
